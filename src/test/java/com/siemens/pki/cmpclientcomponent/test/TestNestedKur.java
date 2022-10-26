@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2022 Siemens AG
+ *  Copyright (c) 2023 Siemens AG
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may
  *  not use this file except in compliance with the License.
@@ -15,120 +15,54 @@
  *
  *  SPDX-License-Identifier: Apache-2.0
  */
-package com.siemens.pki.cmpracomponent.test.framework;
+package com.siemens.pki.cmpclientcomponent.test;
 
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 
+import com.siemens.pki.cmpclientcomponent.configuration.ClientContext;
+import com.siemens.pki.cmpclientcomponent.configuration.EnrollmentContext;
+import com.siemens.pki.cmpclientcomponent.configuration.RevocationContext;
+import com.siemens.pki.cmpclientcomponent.main.CmpClient;
+import com.siemens.pki.cmpclientcomponent.main.CmpClient.EnrollmentResult;
 import com.siemens.pki.cmpracomponent.configuration.CheckAndModifyResult;
 import com.siemens.pki.cmpracomponent.configuration.CkgContext;
 import com.siemens.pki.cmpracomponent.configuration.CmpMessageInterface;
-import com.siemens.pki.cmpracomponent.configuration.CmpMessageInterface.ReprotectMode;
 import com.siemens.pki.cmpracomponent.configuration.Configuration;
 import com.siemens.pki.cmpracomponent.configuration.CredentialContext;
-import com.siemens.pki.cmpracomponent.configuration.CrlUpdateRetrievalHandler;
-import com.siemens.pki.cmpracomponent.configuration.GetCaCertificatesHandler;
-import com.siemens.pki.cmpracomponent.configuration.GetCertificateRequestTemplateHandler;
-import com.siemens.pki.cmpracomponent.configuration.GetRootCaCertificateUpdateHandler;
-import com.siemens.pki.cmpracomponent.configuration.GetRootCaCertificateUpdateHandler.RootCaCertificateUpdateResponse;
 import com.siemens.pki.cmpracomponent.configuration.InventoryInterface;
 import com.siemens.pki.cmpracomponent.configuration.NestedEndpointContext;
-import com.siemens.pki.cmpracomponent.configuration.PersistencyInterface;
+import com.siemens.pki.cmpracomponent.configuration.SignatureCredentialContext;
 import com.siemens.pki.cmpracomponent.configuration.SupportMessageHandlerInterface;
 import com.siemens.pki.cmpracomponent.configuration.VerificationContext;
-import com.siemens.pki.cmpracomponent.cryptoservices.KeyPairGeneratorFactory;
-import com.siemens.pki.cmpracomponent.persistency.DefaultPersistencyImplementation;
-import com.siemens.pki.cmpracomponent.protection.ProtectionProvider;
-import com.siemens.pki.cmpracomponent.protection.ProtectionProviderFactory;
+import com.siemens.pki.cmpracomponent.test.framework.ConfigurationFactory;
+import com.siemens.pki.cmpracomponent.test.framework.SignatureValidationCredentials;
+import com.siemens.pki.cmpracomponent.test.framework.TrustChainAndPrivateKey;
 import com.siemens.pki.cmpracomponent.util.MessageDumper;
-import java.io.IOException;
 import java.math.BigInteger;
-import java.security.GeneralSecurityException;
-import java.security.InvalidKeyException;
-import java.security.KeyPairGenerator;
-import java.security.NoSuchAlgorithmException;
-import java.security.cert.CRLException;
-import java.security.cert.CertificateException;
-import java.security.cert.CertificateFactory;
-import java.security.cert.X509CRL;
+import java.security.KeyPair;
+import java.security.PrivateKey;
 import java.security.cert.X509Certificate;
-import java.security.spec.InvalidKeySpecException;
-import java.util.Collections;
-import org.bouncycastle.asn1.ASN1Integer;
-import org.bouncycastle.asn1.ASN1Sequence;
-import org.bouncycastle.asn1.cmp.CMPObjectIdentifiers;
-import org.bouncycastle.asn1.cmp.CertReqTemplateContent;
-import org.bouncycastle.asn1.crmf.AttributeTypeAndValue;
-import org.bouncycastle.asn1.crmf.CertTemplateBuilder;
-import org.bouncycastle.asn1.crmf.Controls;
-import org.bouncycastle.asn1.x500.X500Name;
+import java.util.ArrayList;
+import java.util.List;
+import org.bouncycastle.asn1.cmp.PKIBody;
+import org.junit.Before;
+import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * builder class for {@link Configuration} objects
- */
-public class ConfigurationFactory {
+public class TestNestedKur extends EnrollmentTestcaseBase {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(ConfigurationFactory.class);
-    public static ProtectionProvider eeSignaturebasedProtectionProvider;
-    public static ProtectionProvider eePbmac1ProtectionProvider;
-    private static KeyPairGenerator keyGenerator;
-    private static ProtectionProvider eePasswordbasedProtectionProvider;
+    private static final String UPSTREAM_TRUST_PATH = "credentials/CMP_CA_and_LRA_DOWNSTREAM_Root.pem";
 
-    public static Configuration buildPasswordbasedDownstreamConfiguration() throws Exception {
-        final CredentialContext downstreamCredentials = new SharedSecret("PBMAC1", TestUtils.PASSWORD);
-        final VerificationContext downstreamTrust = new PasswordValidationCredentials(TestUtils.PASSWORD);
+    private static final Logger LOGGER = LoggerFactory.getLogger(TestNestedKur.class);
 
-        final CredentialContext upstreamCredentials =
-                new TrustChainAndPrivateKey("credentials/CMP_LRA_UPSTREAM_Keystore.p12", "Password".toCharArray());
-        final VerificationContext upstreamTrust =
-                new SignatureValidationCredentials("credentials/CMP_CA_Root.pem", null);
-        final SignatureValidationCredentials enrollmentTrust =
-                new SignatureValidationCredentials("credentials/ENROLL_Root.pem", null);
-
-        final Configuration config = buildSimpleRaConfiguration(
-                downstreamCredentials,
-                ReprotectMode.reprotect,
-                downstreamTrust,
-                upstreamCredentials,
-                upstreamTrust,
-                enrollmentTrust);
-        return config;
-    }
-
-    public static Configuration buildSignatureBasedDownstreamConfiguration() throws Exception {
-        final TrustChainAndPrivateKey downstreamCredentials =
-                new TrustChainAndPrivateKey("credentials/CMP_LRA_DOWNSTREAM_Keystore.p12", "Password".toCharArray());
-        final SignatureValidationCredentials downstreamTrust =
-                new SignatureValidationCredentials("credentials/CMP_EE_Root.pem", null);
-        final TrustChainAndPrivateKey upstreamCredentials =
-                new TrustChainAndPrivateKey("credentials/CMP_LRA_UPSTREAM_Keystore.p12", "Password".toCharArray());
-        final SignatureValidationCredentials upstreamTrust =
-                new SignatureValidationCredentials("credentials/CMP_CA_Root.pem", null);
-        final SignatureValidationCredentials enrollmentTrust =
-                new SignatureValidationCredentials("credentials/ENROLL_Root.pem", null);
-
-        return buildSimpleRaConfiguration(
-                downstreamCredentials,
-                ReprotectMode.keep,
-                downstreamTrust,
-                upstreamCredentials,
-                upstreamTrust,
-                enrollmentTrust);
-    }
-
-    public static Configuration buildSignatureBasedDownstreamOnlyConfiguration() throws Exception {
-        final TrustChainAndPrivateKey downstreamCredentials =
-                new TrustChainAndPrivateKey("credentials/CMP_LRA_DOWNSTREAM_Keystore.p12", "Password".toCharArray());
-        final SignatureValidationCredentials downstreamTrust =
-                new SignatureValidationCredentials("credentials/CMP_EE_Root.pem", null);
-
+    public static Configuration buildSignatureBasedLraConfiguration() throws Exception {
         return new Configuration() {
             @Override
             public CkgContext getCkgConfiguration(final String certProfile, final int bodyType) {
                 fail(String.format(
-                        "getCkgConfiguration called with certprofile: {}, type: {}",
+                        "LRA: getCkgConfiguration called with certprofile: {}, type: {}",
                         certProfile,
                         MessageDumper.msgTypeAsString(bodyType)));
                 return null;
@@ -137,14 +71,19 @@ public class ConfigurationFactory {
             @Override
             public CmpMessageInterface getDownstreamConfiguration(final String certProfile, final int bodyType) {
                 LOGGER.debug(
-                        "getDownstreamConfiguration called with certprofile: {}, type: {}",
+                        "LRA: getDownstreamConfiguration called with certprofile: {}, type: {}",
                         certProfile,
                         MessageDumper.msgTypeAsString(bodyType));
                 return new CmpMessageInterface() {
 
                     @Override
                     public VerificationContext getInputVerification() {
-                        return downstreamTrust;
+                        switch (certProfile) {
+                            case "certProfileForKur":
+                            case "certProfileForRr":
+                                return new SignatureValidationCredentials("credentials/ENROLL_Root.pem", null);
+                        }
+                        return new SignatureValidationCredentials("credentials/CMP_EE_Root.pem", null);
                     }
 
                     @Override
@@ -155,7 +94,8 @@ public class ConfigurationFactory {
                     @Override
                     public CredentialContext getOutputCredentials() {
                         try {
-                            return downstreamCredentials;
+                            return new TrustChainAndPrivateKey(
+                                    "credentials/CMP_LRA_DOWNSTREAM_Keystore.p12", "Password".toCharArray());
                         } catch (final Exception e) {
                             throw new RuntimeException(e);
                         }
@@ -190,26 +130,26 @@ public class ConfigurationFactory {
 
             @Override
             public VerificationContext getEnrollmentTrust(final String certProfile, final int bodyType) {
-                fail(String.format(
-                        "getEnrollmentTrust called with certprofile: {}, type: {}",
+                LOGGER.debug(
+                        "LRA: getEnrollmentTrust called with certprofile: {}, type: {}",
                         certProfile,
-                        MessageDumper.msgTypeAsString(bodyType)));
-                return null;
+                        MessageDumper.msgTypeAsString(bodyType));
+                return new SignatureValidationCredentials("credentials/ENROLL_Root.pem", null);
             }
 
             @Override
             public boolean getForceRaVerifyOnUpstream(final String certProfile, final int bodyType) {
-                fail(String.format(
-                        "getForceRaVerifyOnUpstream called with certprofile: {}, type: {}",
+                LOGGER.debug(
+                        "LRA: getForceRaVerifyOnUpstream called with certprofile: {}, type: {}",
                         certProfile,
-                        MessageDumper.msgTypeAsString(bodyType)));
+                        MessageDumper.msgTypeAsString(bodyType));
                 return false;
             }
 
             @Override
             public InventoryInterface getInventory(final String certProfile, final int bodyType) {
                 LOGGER.debug(
-                        "getInventory called with certprofile: {}, type: {}",
+                        "LRA: getInventory called with certprofile: {}, type: {}",
                         certProfile,
                         MessageDumper.msgTypeAsString(bodyType));
                 return new InventoryInterface() {
@@ -220,9 +160,9 @@ public class ConfigurationFactory {
                             final String requesterDn,
                             final byte[] certTemplate,
                             final String requestedSubjectDn,
-                            byte[] pkiMessage) {
+                            final byte[] pkiMessage) {
                         LOGGER.debug(
-                                "checkAndModifyCertRequest called with transactionID: {}, requesterDn: {}, requestedSubjectDn: {}",
+                                "LRA: checkAndModifyCertRequest called with transactionID: {}, requesterDn: {}, requestedSubjectDn: {}",
                                 new BigInteger(transactionID),
                                 requesterDn,
                                 requestedSubjectDn);
@@ -247,11 +187,11 @@ public class ConfigurationFactory {
                             final byte[] pkcs10CertRequest,
                             final String requestedSubjectDn,
                             byte[] pkiMessage) {
-                        LOGGER.debug(
-                                "checkP10CertRequest called with transactionID: {}, requesterDn: {}, requestedSubjectDn: {}",
+                        fail(String.format(
+                                "LRA: checkP10CertRequest called with transactionID: {}, requesterDn: {}, requestedSubjectDn: {}",
                                 new BigInteger(transactionID),
                                 requesterDn,
-                                requestedSubjectDn);
+                                requestedSubjectDn));
                         return false;
                     }
 
@@ -263,7 +203,7 @@ public class ConfigurationFactory {
                             final String subjectDN,
                             final String issuerDN) {
                         LOGGER.debug(
-                                "learnEnrollmentResult called with transactionID: {}, serialNumber: {}, subjectDN: {}, issuerDN: {}",
+                                "LRA: learnEnrollmentResult called with transactionID: {}, serialNumber: {}, subjectDN: {}, issuerDN: {}",
                                 new BigInteger(transactionID),
                                 serialNumber,
                                 subjectDN,
@@ -275,139 +215,110 @@ public class ConfigurationFactory {
 
             @Override
             public int getRetryAfterTimeInSeconds(final String certProfile, final int bodyType) {
-                fail(String.format(
-                        "getRetryAfterTimeInSeconds called with certprofile: {}, type: {}",
+                LOGGER.debug(
+                        "LRA: getRetryAfterTimeInSeconds called with certprofile: {}, type: {}",
                         certProfile,
-                        MessageDumper.msgTypeAsString(bodyType)));
-                return 100;
+                        MessageDumper.msgTypeAsString(bodyType));
+                return 1;
             }
 
             @Override
             public SupportMessageHandlerInterface getSupportMessageHandler(
                     final String certProfile, final String infoTypeOid) {
                 LOGGER.debug(
-                        "getSupportMessageHandler called with certprofile: {}, infoTypeOid: {}",
+                        "LRA: getSupportMessageHandler called with certprofile: {}, infoTypeOid: {}",
                         certProfile,
                         infoTypeOid);
-                if (CMPObjectIdentifiers.id_it_caCerts.getId().equals(infoTypeOid)) {
-                    return (GetCaCertificatesHandler) () -> {
-                        try {
-                            return TestCertUtility.loadCertificatesFromFile("credentials/CaCerts.pem");
-                        } catch (final Exception e) {
-                            throw new RuntimeException(e);
-                        }
-                    };
-                }
-                if (CMPObjectIdentifiers.id_it_rootCaCert.getId().equals(infoTypeOid)) {
-                    LOGGER.debug("id_it_rootCaCert called with certprofile: {}", certProfile);
-                    return (GetRootCaCertificateUpdateHandler) oldRootCaCertificate -> {
-                        assertNotNull(oldRootCaCertificate);
-                        try {
-                            LOGGER.debug("oldRootCaCertificate :"
-                                    + MessageDumper.dumpAsn1Object(
-                                            TestCertUtility.cmpCertificateFromCertificate(oldRootCaCertificate)));
-                        } catch (final CertificateException e1) {
-                            throw new RuntimeException(e1);
-                        }
-
-                        return new RootCaCertificateUpdateResponse() {
-
-                            @Override
-                            public X509Certificate getNewWithNew() {
-                                try {
-                                    return TestCertUtility.loadCertificatesFromFile("credentials/newWithNew.pem")
-                                            .get(0);
-                                } catch (final Exception e) {
-                                    throw new RuntimeException(e);
-                                }
-                            }
-
-                            @Override
-                            public X509Certificate getNewWithOld() {
-                                try {
-                                    return TestCertUtility.loadCertificatesFromFile("credentials/newWithOld.pem")
-                                            .get(0);
-                                } catch (final Exception e) {
-                                    throw new RuntimeException(e);
-                                }
-                            }
-
-                            @Override
-                            public X509Certificate getOldWithNew() {
-                                try {
-                                    return TestCertUtility.loadCertificatesFromFile("credentials/oldWithNew.pem")
-                                            .get(0);
-                                } catch (final Exception e) {
-                                    throw new RuntimeException(e);
-                                }
-                            }
-                        };
-                    };
-                }
-                if (CMPObjectIdentifiers.id_it_certReqTemplate.getId().equals(infoTypeOid)) {
-                    LOGGER.debug("id_it_certReqTemplate called with certprofile: {}", certProfile);
-                    return (GetCertificateRequestTemplateHandler) () -> {
-                        try {
-                            return generateCertReqTemplateContent().getEncoded();
-                        } catch (final IOException e) {
-                            throw new RuntimeException(e);
-                        }
-                    };
-                }
-                if (CMPObjectIdentifiers.id_it_crlStatusList.getId().equals(infoTypeOid)) {
-                    LOGGER.debug("id_it_crlStatusList called with certprofile: {}", certProfile);
-                    return (CrlUpdateRetrievalHandler)
-                            (dpnFullName, dpnNameRelativeToCRLIssuer, issuer, thisUpdate) -> {
-                                try {
-                                    LOGGER.debug(
-                                            "CrlUpdateRetrieval OID: {}, dpnFullName:{}, dpnNameRelativeToCRLIssuer:{}, issuer:{}, thisUpdate: {}",
-                                            infoTypeOid,
-                                            dpnFullName,
-                                            dpnNameRelativeToCRLIssuer,
-                                            issuer,
-                                            thisUpdate);
-                                    return Collections.singletonList((X509CRL) CertificateFactory.getInstance("X.509")
-                                            .generateCRL(
-                                                    ConfigFileLoader.getConfigFileAsStream("credentials/CRL.der")));
-                                } catch (CRLException | CertificateException | IOException e) {
-                                    throw new RuntimeException(e);
-                                }
-                            };
-                }
-                fail("unexpected OID " + infoTypeOid);
                 return null;
             }
 
             @Override
             public CmpMessageInterface getUpstreamConfiguration(final String certProfile, final int bodyType) {
-                fail(String.format(
-                        "getUpstreamConfiguration called with certprofile: {}, type: {}",
+                LOGGER.debug(
+                        "LRA: getUpstreamConfiguration called with certprofile: {}, type: {}",
                         certProfile,
-                        MessageDumper.msgTypeAsString(bodyType)));
-                return null;
+                        MessageDumper.msgTypeAsString(bodyType));
+                return new CmpMessageInterface() {
+
+                    @Override
+                    public VerificationContext getInputVerification() {
+                        return new SignatureValidationCredentials("credentials/CMP_CA_Root.pem", null);
+                    }
+
+                    @Override
+                    public NestedEndpointContext getNestedEndpointContext() {
+                        return new NestedEndpointContext() {
+                            // misuse CA and EE credentials for nested endpoints
+                            @Override
+                            public VerificationContext getInputVerification() {
+                                return new SignatureValidationCredentials("credentials/CMP_EE_Root.pem", null);
+                            }
+
+                            @Override
+                            public CredentialContext getOutputCredentials() {
+                                try {
+                                    return new TrustChainAndPrivateKey(
+                                            "credentials/CMP_CA_Keystore.p12", "Password".toCharArray());
+                                } catch (final Exception e) {
+                                    fail(e.getMessage());
+                                    return null;
+                                }
+                            }
+
+                            @Override
+                            public boolean isIncomingRecipientValid(final String recipient) {
+                                LOGGER.debug("LRA: isIncomingRecipientValid called with recipient: {}", recipient);
+                                return true;
+                            }
+                        };
+                    }
+
+                    @Override
+                    public CredentialContext getOutputCredentials() {
+
+                        try {
+                            return new TrustChainAndPrivateKey(
+                                    "credentials/CMP_LRA_UPSTREAM_Keystore.p12", "Password".toCharArray());
+                        } catch (final Exception e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+
+                    @Override
+                    public ReprotectMode getReprotectMode() {
+                        return ReprotectMode.keep;
+                    }
+
+                    @Override
+                    public boolean getSuppressRedundantExtraCerts() {
+                        return false;
+                    }
+
+                    @Override
+                    public boolean isCacheExtraCerts() {
+                        return false;
+                    }
+
+                    @Override
+                    public boolean isMessageTimeDeviationAllowed(final long deviation) {
+                        return true;
+                    }
+                };
             }
 
             @Override
             public boolean isRaVerifiedAcceptable(final String certProfile, final int bodyType) {
-                fail(String.format(
-                        "isRaVerifiedAcceptable called with certprofile: {}, type: {}",
+                LOGGER.debug(
+                        "LRA: isRaVerifiedAcceptable called with certprofile: {}, type: {}",
                         certProfile,
-                        MessageDumper.msgTypeAsString(bodyType)));
+                        MessageDumper.msgTypeAsString(bodyType));
                 return false;
             }
         };
     }
 
-    public static Configuration buildSimpleRaConfiguration(
-            final CredentialContext downstreamCredentials,
-            ReprotectMode reprotectMode,
-            final VerificationContext downstreamTrust,
-            final CredentialContext upstreamCredentials,
-            final VerificationContext upstreamTrust,
-            final SignatureValidationCredentials enrollmentTrust) {
+    public static Configuration buildSignaturebasedRaConfiguration() throws Exception {
         return new Configuration() {
-            PersistencyInterface persistency = new DefaultPersistencyImplementation(5000);
-
             @Override
             public CkgContext getCkgConfiguration(final String certProfile, final int bodyType) {
                 fail(String.format(
@@ -427,25 +338,47 @@ public class ConfigurationFactory {
 
                     @Override
                     public VerificationContext getInputVerification() {
-                        if (certProfile != null) {
-                            switch (certProfile) {
-                                case "certProfileForKur":
-                                case "certProfileForRr":
-                                    return enrollmentTrust;
-                            }
+                        switch (certProfile) {
+                            case "certProfileForKur":
+                            case "certProfileForRr":
+                                return new SignatureValidationCredentials("credentials/ENROLL_Root.pem", null);
                         }
-                        return downstreamTrust;
+                        return new SignatureValidationCredentials("credentials/CMP_EE_Root.pem", null);
                     }
 
                     @Override
                     public NestedEndpointContext getNestedEndpointContext() {
-                        return null;
+                        return new NestedEndpointContext() {
+                            // misuse CA and EE credentials for nested endpoints
+                            @Override
+                            public VerificationContext getInputVerification() {
+                                return new SignatureValidationCredentials("credentials/CMP_CA_Root.pem", null);
+                            }
+
+                            @Override
+                            public CredentialContext getOutputCredentials() {
+                                try {
+                                    return new TrustChainAndPrivateKey(
+                                            "credentials/CMP_EE_Keystore.p12", "Password".toCharArray());
+                                } catch (final Exception e) {
+                                    fail(e.getMessage());
+                                    return null;
+                                }
+                            }
+
+                            @Override
+                            public boolean isIncomingRecipientValid(final String recipient) {
+                                LOGGER.debug("isIncomingRecipientValid called with recipient: {}", recipient);
+                                return true;
+                            }
+                        };
                     }
 
                     @Override
                     public CredentialContext getOutputCredentials() {
                         try {
-                            return downstreamCredentials;
+                            return new TrustChainAndPrivateKey(
+                                    "credentials/CMP_LRA_DOWNSTREAM_Keystore.p12", "Password".toCharArray());
                         } catch (final Exception e) {
                             throw new RuntimeException(e);
                         }
@@ -453,7 +386,7 @@ public class ConfigurationFactory {
 
                     @Override
                     public ReprotectMode getReprotectMode() {
-                        return reprotectMode;
+                        return ReprotectMode.keep;
                     }
 
                     @Override
@@ -484,7 +417,7 @@ public class ConfigurationFactory {
                         "getEnrollmentTrust called with certprofile: {}, type: {}",
                         certProfile,
                         MessageDumper.msgTypeAsString(bodyType));
-                return enrollmentTrust;
+                return new SignatureValidationCredentials("credentials/ENROLL_Root.pem", null);
             }
 
             @Override
@@ -564,11 +497,6 @@ public class ConfigurationFactory {
             }
 
             @Override
-            public PersistencyInterface getPersistency() {
-                return persistency;
-            }
-
-            @Override
             public int getRetryAfterTimeInSeconds(final String certProfile, final int bodyType) {
                 LOGGER.debug(
                         "getRetryAfterTimeInSeconds called with certprofile: {}, type: {}",
@@ -597,7 +525,7 @@ public class ConfigurationFactory {
 
                     @Override
                     public VerificationContext getInputVerification() {
-                        return upstreamTrust;
+                        return new SignatureValidationCredentials("credentials/CMP_CA_Root.pem", null);
                     }
 
                     @Override
@@ -609,7 +537,8 @@ public class ConfigurationFactory {
                     public CredentialContext getOutputCredentials() {
 
                         try {
-                            return upstreamCredentials;
+                            return new TrustChainAndPrivateKey(
+                                    "credentials/CMP_LRA_UPSTREAM_Keystore.p12", "Password".toCharArray());
                         } catch (final Exception e) {
                             throw new RuntimeException(e);
                         }
@@ -648,73 +577,141 @@ public class ConfigurationFactory {
         };
     }
 
-    public static CertReqTemplateContent generateCertReqTemplateContent() throws IOException {
-        final CertTemplateBuilder ctb = new CertTemplateBuilder();
-        ctb.setSubject(new X500Name("CN=test"));
-        final Controls controls = new Controls(
-                new AttributeTypeAndValue(CMPObjectIdentifiers.id_regCtrl_rsaKeyLen, new ASN1Integer(2048)));
-        return new CertReqTemplateContent(ctb.build(), (ASN1Sequence) controls.toASN1Primitive());
+    @Before
+    public void setUp() throws Exception {
+        launchCmpCaAndRaAndLra(buildSignaturebasedRaConfiguration(), buildSignatureBasedLraConfiguration());
     }
 
-    public static ProtectionProvider getEePasswordbasedProtectionProvider()
-            throws InvalidKeyException, NoSuchAlgorithmException, InvalidKeySpecException {
-        if (eePasswordbasedProtectionProvider == null) {
-            eePasswordbasedProtectionProvider =
-                    ProtectionProviderFactory.createProtectionProvider(getEeSharedSecretCredentials());
-        }
-        return eePasswordbasedProtectionProvider;
-    }
+    /**
+     * Updating a Valid Certificate
+     *
+     * @throws Exception
+     */
+    @Test
+    public void testKur() throws Exception {
+        final CmpClient crClient = getSignatureBasedCmpClient(
+                "theCertProfileForOnlineEnrollment",
+                getClientContext(
+                        PKIBody.TYPE_CERT_REQ,
+                        ConfigurationFactory.getKeyGenerator().generateKeyPair(),
+                        null),
+                UPSTREAM_TRUST_PATH);
+        final EnrollmentResult crResult = crClient.invokeEnrollment();
 
-    private static SharedSecret getEeSharedSecretCredentials() {
-        if (eeSharedSecretCredentials == null)
-            eeSharedSecretCredentials = new SharedSecret("PASSWORDBASEDMAC", TestUtils.PASSWORD);
-        return eeSharedSecretCredentials;
-    }
+        final X509Certificate crEnrolledCertificate = crResult.getEnrolledCertificate();
 
-    public static ProtectionProvider getEePbmac1ProtectionProvider()
-            throws InvalidKeyException, NoSuchAlgorithmException, InvalidKeySpecException {
-        if (eePbmac1ProtectionProvider == null) {
-            eePbmac1ProtectionProvider =
-                    ProtectionProviderFactory.createProtectionProvider(new SharedSecret("PBMAC1", TestUtils.PASSWORD));
-        }
-        return eePbmac1ProtectionProvider;
-    }
+        final ClientContext kurClientContext = new ClientContext() {
 
-    public static ProtectionProvider getEeSignaturebasedProtectionProvider() throws Exception {
-        if (eeSignaturebasedProtectionProvider == null) {
-            eeSignaturebasedProtectionProvider =
-                    ProtectionProviderFactory.createProtectionProvider(getEeSignaturebasedCredentials());
-        }
-        return eeSignaturebasedProtectionProvider;
-    }
+            KeyPair keyPair = ConfigurationFactory.getKeyGenerator().generateKeyPair();
 
-    private static TrustChainAndPrivateKey eeSignaturebasedCredentials;
-    private static SharedSecret eeSharedSecretCredentials;
+            @Override
+            public EnrollmentContext getEnrollmentContext() {
 
-    public static TrustChainAndPrivateKey getEeSignaturebasedCredentials() throws Exception {
-        if (eeSignaturebasedCredentials == null)
-            eeSignaturebasedCredentials = new TrustChainAndPrivateKey(
-                    // "credentials/CMP_EE_Keystore_EdDSA.p12",
-                    // "credentials/CMP_EE_Keystore_RSA.p12",
-                    "credentials/CMP_EE_Keystore.p12", TestUtils.PASSWORD_AS_CHAR_ARRAY);
-        return eeSignaturebasedCredentials;
-    }
+                return new EnrollmentContext() {
 
-    public static KeyPairGenerator getKeyGenerator() {
-        if (keyGenerator == null) {
+                    @Override
+                    public KeyPair getCertificateKeypair() {
+                        return keyPair;
+                    }
 
-            try {
-                // keyGenerator = KeyPairGeneratorFactory
-                // .getEcKeyPairGenerator("secp256r1");
-                keyGenerator = KeyPairGeneratorFactory.getRsaKeyPairGenerator(2048);
-                // keyGenerator = KeyPairGeneratorFactory
-                // .getEdDsaKeyPairGenerator("Ed448");
-            } catch (final GeneralSecurityException e) {
-                fail(e.getMessage());
+                    @Override
+                    public VerificationContext getEnrollmentTrust() {
+                        try {
+                            return getEnrollmentCredentials();
+                        } catch (final Exception e) {
+                            return null;
+                        }
+                    }
+
+                    @Override
+                    public int getEnrollmentType() {
+                        return PKIBody.TYPE_KEY_UPDATE_REQ;
+                    }
+
+                    @Override
+                    public List<TemplateExtension> getExtensions() {
+                        return null;
+                    }
+
+                    @Override
+                    public X509Certificate getOldCert() {
+                        return crEnrolledCertificate;
+                    }
+
+                    @Override
+                    public boolean getRequestImplictConfirm() {
+                        return false;
+                    }
+
+                    @Override
+                    public String getSubject() {
+                        return crEnrolledCertificate.getSubjectX500Principal().getName();
+                    }
+                };
             }
-        }
-        return keyGenerator;
-    }
 
-    private ConfigurationFactory() {}
+            @Override
+            public RevocationContext getRevocationContext() {
+                fail("getRevocationContext");
+                return null;
+            }
+        };
+
+        final SignatureValidationCredentials enrollmentCredentials = getEnrollmentCredentials();
+
+        final CmpMessageInterface kurUpstream = new CmpMessageInterface() {
+
+            @Override
+            public VerificationContext getInputVerification() {
+                return new SignatureValidationCredentials(UPSTREAM_TRUST_PATH, null);
+            }
+
+            @Override
+            public NestedEndpointContext getNestedEndpointContext() {
+                return null;
+            }
+
+            @Override
+            public CredentialContext getOutputCredentials() {
+                return new SignatureCredentialContext() {
+
+                    @Override
+                    public List<X509Certificate> getCertificateChain() {
+                        final List<X509Certificate> ret = new ArrayList<>(enrollmentCredentials.getAdditionalCerts());
+                        ret.add(0, crEnrolledCertificate);
+                        return ret;
+                    }
+
+                    @Override
+                    public PrivateKey getPrivateKey() {
+                        return crResult.getPrivateKey();
+                    }
+                };
+            }
+
+            @Override
+            public ReprotectMode getReprotectMode() {
+                return ReprotectMode.reprotect;
+            }
+
+            @Override
+            public boolean getSuppressRedundantExtraCerts() {
+                return false;
+            }
+
+            @Override
+            public boolean isCacheExtraCerts() {
+                return false;
+            }
+
+            @Override
+            public boolean isMessageTimeDeviationAllowed(final long deviation) {
+                return deviation < 10;
+            }
+        };
+        final CmpClient kurClient =
+                new CmpClient("certProfileForKur", getUpstreamExchange(), kurUpstream, kurClientContext);
+        final EnrollmentResult kurResult = kurClient.invokeEnrollment();
+        assertNotNull(kurResult);
+    }
 }

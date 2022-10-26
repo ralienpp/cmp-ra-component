@@ -15,23 +15,34 @@
  *
  *  SPDX-License-Identifier: Apache-2.0
  */
-package com.siemens.pki.cmpracomponent.test.framework;
+package com.siemens.pki.cmpclientcomponent.configuration;
 
-import com.siemens.pki.cmpracomponent.configuration.VerificationContext;
+/**
+ *
+ * generic client configuration
+ */
+public interface ClientContext {
 
-public class PasswordValidationCredentials implements VerificationContext {
-    private final byte[] sharedSecret;
+    /**
+     * get enrollment specific configuration
+     *
+     * @return enrollment specific configuration
+     */
+    EnrollmentContext getEnrollmentContext();
 
-    public PasswordValidationCredentials(final String sharedSecret) {
-        this.sharedSecret = sharedSecret.getBytes();
+    /**
+     * CMP message recipient or <code>null</code> if NULL_DN should be used
+     *
+     * @return
+     */
+    default String getRecipient() {
+        return null;
     }
 
-    public PasswordValidationCredentials(byte[] sharedSecret) {
-        this.sharedSecret = sharedSecret;
-    }
-
-    @Override
-    public byte[] getSharedSecret(final byte[] senderKID) {
-        return sharedSecret;
-    }
+    /**
+     * get revocation specific configuration
+     *
+     * @return revocation specific configuration
+     */
+    RevocationContext getRevocationContext();
 }

@@ -186,7 +186,7 @@ public class CertUtility {
      *                              instantiated
      * @throws Exception            in case of an error
      */
-    private static synchronized CertificateFactory getCertificateFactory() throws CertificateException {
+    public static synchronized CertificateFactory getCertificateFactory() throws CertificateException {
         if (certificateFactory == null) {
             certificateFactory = CertificateFactory.getInstance("X.509", BOUNCY_CASTLE_PROVIDER);
         }

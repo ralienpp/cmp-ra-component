@@ -15,23 +15,34 @@
  *
  *  SPDX-License-Identifier: Apache-2.0
  */
-package com.siemens.pki.cmpracomponent.test.framework;
+package com.siemens.pki.cmpclientcomponent.configuration;
 
-import com.siemens.pki.cmpracomponent.configuration.VerificationContext;
+import java.math.BigInteger;
+import java.security.cert.CRLReason;
 
-public class PasswordValidationCredentials implements VerificationContext {
-    private final byte[] sharedSecret;
+/**
+ * revocation specific configuration
+ *
+ */
+public interface RevocationContext {
+    /**
+     * get issuer of certificate to revoke
+     *
+     * @return issuer of certificate to revoke
+     */
+    String getIssuer();
 
-    public PasswordValidationCredentials(final String sharedSecret) {
-        this.sharedSecret = sharedSecret.getBytes();
+    /**
+     * get revocation reason to use
+     */
+    default int getRevocationReason() {
+        return CRLReason.UNSPECIFIED.ordinal();
     }
 
-    public PasswordValidationCredentials(byte[] sharedSecret) {
-        this.sharedSecret = sharedSecret;
-    }
-
-    @Override
-    public byte[] getSharedSecret(final byte[] senderKID) {
-        return sharedSecret;
-    }
+    /**
+     * get serial number of certificate to revoke
+     *
+     * @return serial number of certificate to revoke
+     */
+    BigInteger getSerialNumber();
 }

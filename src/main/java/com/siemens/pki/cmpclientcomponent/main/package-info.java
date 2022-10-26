@@ -15,23 +15,7 @@
  *
  *  SPDX-License-Identifier: Apache-2.0
  */
-package com.siemens.pki.cmpracomponent.test.framework;
-
-import com.siemens.pki.cmpracomponent.configuration.VerificationContext;
-
-public class PasswordValidationCredentials implements VerificationContext {
-    private final byte[] sharedSecret;
-
-    public PasswordValidationCredentials(final String sharedSecret) {
-        this.sharedSecret = sharedSecret.getBytes();
-    }
-
-    public PasswordValidationCredentials(byte[] sharedSecret) {
-        this.sharedSecret = sharedSecret;
-    }
-
-    @Override
-    public byte[] getSharedSecret(final byte[] senderKID) {
-        return sharedSecret;
-    }
-}
+/**
+ * the top level CMP end entity entry functions
+ */
+package com.siemens.pki.cmpclientcomponent.main;
