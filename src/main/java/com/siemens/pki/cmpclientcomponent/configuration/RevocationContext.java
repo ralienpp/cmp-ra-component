@@ -15,23 +15,35 @@
  *
  *  SPDX-License-Identifier: Apache-2.0
  */
-package com.siemens.pki.cmpracomponent.configuration;
+package com.siemens.pki.cmpclientcomponent.configuration;
 
-import java.security.cert.X509Certificate;
-import java.util.List;
+import java.math.BigInteger;
+import java.security.cert.CRLReason;
 
 /**
- * support message handler supporting Get CA certificates GENM requests
+ * revocation specific configuration
+ *
  */
-public interface GetCaCertificatesHandler
-        extends SupportMessageHandlerInterface {
+public interface RevocationContext {
+    /**
+     * get issuer of certificate to revoke
+     *
+     * @return issuer of certificate to revoke
+     */
+    String getIssuer();
 
     /**
-     * handle an Get CA certificates GENM request and return certificates to build
-     * the related GENP response
-     *
-     * @return certificates to be returned or <code>null</code> if the returned
-     *         infoValue should be absent
+     * get revocation reason to use
      */
-    List<X509Certificate> getCaCertificates();
+    default int getRevocationReason() {
+        return CRLReason.UNSPECIFIED.ordinal();
+    }
+
+    /**
+     * get serial number of certificate to revoke
+     *
+     * @return serial number of certificate to revoke
+     */
+    BigInteger getSerialNumber();
+
 }
