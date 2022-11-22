@@ -43,7 +43,7 @@ https://datatracker.ietf.org/doc/draft-ietf-lamps-cmp-algorithms/).
 * The generic CMP RA component is usable as servlet
   in typical web server frameworks, such as Tomcat.
 * The Configuration interface of the generic CMP RA component supports
-  setting options also dynamically <!--- TODO really? --> and dependent on certificate profiles.
+  setting options also dynamicall and dependent on certificate profiles.
 * The upstream message transfer interface of the component
     * provides optional routing information dependent on the certificate profile
     * supports legacy servers by using PKCS#10 requests
@@ -81,7 +81,6 @@ The picture below shows the overall design and relation to JAVA base components:
 
 ## Message exchange API design
 
-<!--- TODO does this still apply? We meanwhile can have multiple interfaces, depending on message type and certificate profile. -->
 For simplicity, there is only one downstream interface towards clients (EEs)
 and one upstream interface towards server (CA).
 In case multiple downstream or upstream interfaces are desired:
@@ -233,7 +232,7 @@ the following CMP functions and features:
 ## Advanced features, in particular for productive use
 
 * The Configuration interface of the generic CMP client component supports
-  setting options also dynamically. <!--- TODO really? -->
+  setting options also dynamically.
   <!--- TODO how about: and dependent on certificate profiles >
 * The message transfer interface of the component provides
   optional routing information dependent on the certificate profile
