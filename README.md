@@ -120,9 +120,9 @@ It can regard incoming and outgoing CMP messages
 simply as opaque Java byte arrays.
 The externally usable interface is specified in [`com.siemens.pki.cmpracomponent.main.CmpRaComponent`](src/main/java/com/siemens/pki/cmpracomponent/main/CmpRaComponent.java).
 
-The UML diagram [component and interface design](doc/componentandinterfacedesign.uml)
+The UML diagram [component and interface design](doc/componentandinterfacedesignra.uml)
 gives an overview about external components and interactions.
-![component and interface design](doc/componentandinterfacedesign.png)
+![component and interface design](doc/componentandinterfacedesignra.png)
 
 ### Dynamic message exchange behavior on the downstream CMP interface and upstream PKCS#10/X.509 interface
 
@@ -293,7 +293,18 @@ It can regard incoming and outgoing CMP messages
 simply as opaque Java byte arrays.
 The externally usable interface is specified in [`com.siemens.pki.cmpclientcomponent.main.CmpClient`](src/main/java/com/siemens/pki/cmpclientcomponent/main/CmpClient.java).
 
-<!--- TODO add UML diagram, similar to the one for the RA -->
+The UML diagram [component and interface design](doc/componentandinterfacedesignclient.uml)
+gives an overview about external components and interactions.
+![component and interface design](doc/componentandinterfacedesignclient.png)
+
+### Dynamic message exchange behavior for downstream and upstream CMP interface
+
+The UML diagram
+[Sequence diagram for CMP](doc/Sequence_instantiateCmpClientComponent.uml)
+gives an overview about instantiation and message exchange
+between CMP CLient component and upstream interface:
+
+![Sequence diagram for CMP](doc/Sequence_instantiateCmpClientComponent.png)
 
 ## Configuration interface design
 
