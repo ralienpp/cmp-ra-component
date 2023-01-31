@@ -17,12 +17,6 @@
  */
 package com.siemens.pki.cmpclientcomponent.main;
 
-import java.security.PrivateKey;
-import java.security.cert.X509CRL;
-import java.security.cert.X509Certificate;
-import java.util.Date;
-import java.util.List;
-
 import com.siemens.pki.cmpclientcomponent.configuration.ClientContext;
 import com.siemens.pki.cmpracomponent.configuration.CmpMessageInterface;
 import com.siemens.pki.cmpracomponent.configuration.CrlUpdateRetrievalHandler;
@@ -30,14 +24,21 @@ import com.siemens.pki.cmpracomponent.configuration.GetCaCertificatesHandler;
 import com.siemens.pki.cmpracomponent.configuration.GetCertificateRequestTemplateHandler;
 import com.siemens.pki.cmpracomponent.configuration.GetRootCaCertificateUpdateHandler;
 import com.siemens.pki.cmpracomponent.main.CmpRaComponent.UpstreamExchange;
+import java.security.PrivateKey;
+import java.security.cert.X509CRL;
+import java.security.cert.X509Certificate;
+import java.util.Date;
+import java.util.List;
 
 /**
  * a CMP client implementation
  *
  */
-public class CmpClient implements CrlUpdateRetrievalHandler,
-        GetCaCertificatesHandler, GetCertificateRequestTemplateHandler,
-        GetRootCaCertificateUpdateHandler {
+public class CmpClient
+        implements CrlUpdateRetrievalHandler,
+                GetCaCertificatesHandler,
+                GetCertificateRequestTemplateHandler,
+                GetRootCaCertificateUpdateHandler {
     /**
      * result of an enrollment transaction
      *
@@ -64,7 +65,6 @@ public class CmpClient implements CrlUpdateRetrievalHandler,
          * @return the private key related to the enrolled certificate
          */
         PrivateKey getPrivateKey();
-
     }
 
     private final UpstreamExchange upstreamExchange;
@@ -84,13 +84,13 @@ public class CmpClient implements CrlUpdateRetrievalHandler,
      * @param clientContext
      *            client specific configuration
      */
-    public CmpClient(final UpstreamExchange upstreamExchange,
+    public CmpClient(
+            final UpstreamExchange upstreamExchange,
             final CmpMessageInterface upstreamConfiguration,
             final ClientContext clientContext) {
         this.upstreamExchange = upstreamExchange;
         this.upstreamConfiguration = upstreamConfiguration;
         this.clientContext = clientContext;
-
     }
 
     /**
@@ -118,8 +118,7 @@ public class CmpClient implements CrlUpdateRetrievalHandler,
      * {@inheritDoc}
      */
     @Override
-    public List<X509CRL> getCrls(final String dpn, final String[] issuer,
-            final Date thisUpdate) {
+    public List<X509CRL> getCrls(final String dpn, final String[] issuer, final Date thisUpdate) {
         // TODO Auto-generated method stub
         return null;
     }
@@ -129,8 +128,7 @@ public class CmpClient implements CrlUpdateRetrievalHandler,
      * {@inheritDoc}
      */
     @Override
-    public RootCaCertificateUpdateResponse getRootCaCertificateUpdate(
-            final X509Certificate oldRootCaCertificate) {
+    public RootCaCertificateUpdateResponse getRootCaCertificateUpdate(final X509Certificate oldRootCaCertificate) {
         // TODO Auto-generated method stub
         return null;
     }
@@ -154,5 +152,4 @@ public class CmpClient implements CrlUpdateRetrievalHandler,
         // TODO Auto-generated method stub
         return false;
     }
-
 }

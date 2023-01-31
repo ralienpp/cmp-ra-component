@@ -23,8 +23,7 @@ import java.util.List;
 /**
  * support message handler supporting Get CA certificates GENM requests
  */
-public interface GetCaCertificatesHandler
-        extends SupportMessageHandlerInterface {
+public interface GetCaCertificatesHandler extends SupportMessageHandlerInterface {
 
     /**
      * handle an Get CA certificates GENM request and return certificates to build

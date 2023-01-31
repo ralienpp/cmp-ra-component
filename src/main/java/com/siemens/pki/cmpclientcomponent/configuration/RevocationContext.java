@@ -45,5 +45,4 @@ public interface RevocationContext {
      * @return serial number of certificate to revoke
      */
     BigInteger getSerialNumber();
-
 }

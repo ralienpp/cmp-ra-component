@@ -17,12 +17,10 @@
  */
 package com.siemens.pki.cmpclientcomponent.configuration;
 
+import com.siemens.pki.cmpracomponent.configuration.VerificationContext;
 import java.security.KeyPair;
 import java.util.List;
-
 import org.bouncycastle.asn1.cmp.PKIBody;
-
-import com.siemens.pki.cmpracomponent.configuration.VerificationContext;
 
 /**
  * enrollment specific configuration
