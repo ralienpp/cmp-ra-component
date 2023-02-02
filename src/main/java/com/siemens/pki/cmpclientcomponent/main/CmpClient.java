@@ -114,16 +114,6 @@ public class CmpClient
     }
 
     /**
-     * invoke an CRL Update Retrieval GENM request
-     * {@inheritDoc}
-     */
-    @Override
-    public List<X509CRL> getCrls(final String dpn, final String[] issuer, final Date thisUpdate) {
-        // TODO Auto-generated method stub
-        return null;
-    }
-
-    /**
      * invoke a Get root CA certificate update GENM request
      * {@inheritDoc}
      */
@@ -151,5 +141,13 @@ public class CmpClient
     public boolean invokeRevocation() {
         // TODO Auto-generated method stub
         return false;
+    }
+
+    @Override
+    public List<X509CRL> getCrls(String[] dpnFullName,
+            String dpnNameRelativeToCRLIssuer, String[] issuer,
+            Date thisUpdate) {
+        // TODO Auto-generated method stub
+        return null;
     }
 }
