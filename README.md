@@ -298,12 +298,9 @@ gives an overview about external components and interactions.
 
 ### Dynamic message exchange behavior for downstream and upstream CMP interface
 
-The UML diagram [component and interface design](doc/componentandinterfacedesignclient.uml)
-gives an overview about external components and interactions.
-![component and interface design](doc/componentandinterfacedesignclient.png)
 The UML diagram [Sequence diagram for CMP](doc/Sequence_instantiateCmpClientComponent.uml)
 gives an overview about instantiation and message exchange
-between CMP CLient component and upstream interface:
+between CMP Client component and upstream interface:
 
 ![Sequence diagram for CMP](doc/Sequence_instantiateCmpClientComponent.png)
 

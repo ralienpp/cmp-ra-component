@@ -5,9 +5,8 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com.siemens.pki</groupId>
 	<artifactId>CmpRaComponent</artifactId>
-	<version>2.6.0</version>
 	<packaging>jar</packaging>
-	<version>2.5.2-client-SNAPSHOT</version>
+	<version>2.6.2-client-SNAPSHOT</version>
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<parent.basedir>.</parent.basedir>

@@ -19,6 +19,7 @@ package com.siemens.pki.cmpclientcomponent.configuration;
 
 import com.siemens.pki.cmpracomponent.configuration.VerificationContext;
 import java.security.KeyPair;
+import java.security.cert.X509Certificate;
 import java.util.List;
 import org.bouncycastle.asn1.cmp.PKIBody;
 
@@ -37,12 +38,12 @@ public interface EnrollmentContext {
         String getId();
 
         /**
-         * Gets the extensions's DER-encoded value. Note, this is the bytes
-         * that are encoded as an OCTET STRING. It does not include the OCTET
-         * STRING tag and length.
+         * Gets the extensions's DER-encoded value. Note, this is the bytes that are
+         * encoded as an OCTET STRING. It does not include the OCTET STRING tag and
+         * length.
          *
-         * @return a copy of the extension's value, or {@code null} if no
-         *         extension value is present.
+         * @return a copy of the extension's value, or {@code null} if no extension
+         *         value is present.
          */
         byte[] getValue();
 
@@ -55,18 +56,17 @@ public interface EnrollmentContext {
     }
 
     /**
-     * key pair for the new certificate; is is used for
-     * signature-based POPO, and the corresponding
-     * public key is put in the certificate template.
+     * key pair for the new certificate; is is used for signature-based POPO, and
+     * the corresponding public key is put in the certificate template.
      *
-     * @return key pair or <code>null</code> if central key generation
-     *         should be requested
+     * @return key pair or <code>null</code> if central key generation should be
+     *         requested
      */
     KeyPair getCertificateKeypair();
 
     /**
-     * provide VerificationContext used to validate
-     * the newly enrolled certificate and build the enrollment chain
+     * provide VerificationContext used to validate the newly enrolled certificate
+     * and build the enrollment chain
      *
      * @return an VerificationContext related to the enrolled certificate
      */
@@ -89,27 +89,26 @@ public interface EnrollmentContext {
     List<TemplateExtension> getExtensions();
 
     /**
-     * digest algorithm proof-of-possession (POPO)
-     *
-     * @return name of a digest algorithm
-     */
-    default String getPopoDigest() {
-        return "SHA256";
-    }
-
-    /**
-     * control implicit confirmation for
-     * enrolled certificates
+     * control implicit confirmation for enrolled certificates
      *
      * @return true, if end entity requests implicit confirmation
      */
     boolean getRequestImplictConfirm();
 
     /**
-     * subject to be inserted in the CRMF template or <code>null</code> if
-     * subject should be absent
+     * subject to be inserted in the CRMF template or <code>null</code> if subject
+     * should be absent
      *
      * @return the subject or <code>null</code>
      */
     String getSubject();
+
+    /**
+     * a KUR contains a id-regCtrl-oldCertID control holding issuer and serialNumber
+     * of the certificate to be updated. Here an old certificate can be provided.
+     *
+     * @return certificate to be updated or <code>null</code> if the control
+     *         id-regCtrl-oldCertID should'nt be used.
+     */
+    X509Certificate getOldCert();
 }
