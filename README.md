@@ -43,7 +43,7 @@ https://datatracker.ietf.org/doc/draft-ietf-lamps-cmp-algorithms/).
 * The generic CMP RA component is usable as servlet
   in typical web server frameworks, such as Tomcat.
 * The Configuration interface of the generic CMP RA component supports
-  setting options also dynamicall and dependent on certificate profiles.
+  setting options also dynamically and dependent on certificate profiles.
 * The upstream message transfer interface of the component
     * provides optional routing information dependent on the certificate profile
     * supports legacy servers by using PKCS#10 requests
@@ -232,8 +232,8 @@ the following CMP functions and features:
 ## Advanced features, in particular for productive use
 
 * The Configuration interface of the generic CMP client component supports
-  setting options also dynamically.
-  <!--- TODO how about: and dependent on certificate profiles >
+  setting options also dynamically and dependent on certificate profiles in a
+  similar way as for the CMP RA component.
 * The message transfer interface of the component provides
   optional routing information dependent on the certificate profile
 
@@ -260,7 +260,6 @@ The picture below shows the overall design and relation to JAVA base components:
 
 ## Message exchange API design
 
-<!--- TODO does this still apply? We meanwhile can have multiple interfaces, depending on message type and certificate profile. -->
 For simplicity, there is only one upstream interface towards server (CA).
 In case multiple upstream interfaces are desired:
 * Differentiation in transport/routing
@@ -299,8 +298,10 @@ gives an overview about external components and interactions.
 
 ### Dynamic message exchange behavior for downstream and upstream CMP interface
 
-The UML diagram
-[Sequence diagram for CMP](doc/Sequence_instantiateCmpClientComponent.uml)
+The UML diagram [component and interface design](doc/componentandinterfacedesignclient.uml)
+gives an overview about external components and interactions.
+![component and interface design](doc/componentandinterfacedesignclient.png)
+The UML diagram [Sequence diagram for CMP](doc/Sequence_instantiateCmpClientComponent.uml)
 gives an overview about instantiation and message exchange
 between CMP CLient component and upstream interface:
 
@@ -313,8 +314,5 @@ between CMP CLient component and upstream interface:
   * [`com.siemens.pki.cmpracomponent.main.CmpRaComponent.UpstreamExchange`](src/main/java/com/siemens/pki/cmpracomponent/main/CmpRaComponent.java) and
   * [`com.siemens.pki.cmpracomponent.configuration.CmpMessageInterface`](src/main/java/com/siemens/pki/cmpracomponent/configuration/CmpMessageInterface.java)
 
-<!--- TODO add UML diagram, similar to the one for the RA -->
-
-For configuration interface details see
-[RA <!--- TODO Client, not RA! At least make clear which parts do not apply for the client. --> Configuration interface design](#configuration-interface-design).
+For configuration interface details see [RA Configuration interface design](#configuration-interface-design) which is partly reused for client configuration.
 
