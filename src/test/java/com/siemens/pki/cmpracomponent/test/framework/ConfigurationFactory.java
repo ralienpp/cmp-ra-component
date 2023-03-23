@@ -647,10 +647,16 @@ public class ConfigurationFactory {
     public static ProtectionProvider getEePasswordbasedProtectionProvider()
             throws InvalidKeyException, NoSuchAlgorithmException, InvalidKeySpecException {
         if (eePasswordbasedProtectionProvider == null) {
-            eePasswordbasedProtectionProvider = ProtectionProviderFactory.createProtectionProvider(
-                    new SharedSecret("PASSWORDBASEDMAC", TestUtils.PASSWORD));
+            eePasswordbasedProtectionProvider =
+                    ProtectionProviderFactory.createProtectionProvider(getEeSharedSecretCredentials());
         }
         return eePasswordbasedProtectionProvider;
+    }
+
+    private static SharedSecret getEeSharedSecretCredentials() {
+        if (eeSharedSecretCredentials == null)
+            eeSharedSecretCredentials = new SharedSecret("PASSWORDBASEDMAC", TestUtils.PASSWORD);
+        return eeSharedSecretCredentials;
     }
 
     public static ProtectionProvider getEePbmac1ProtectionProvider()
@@ -665,12 +671,21 @@ public class ConfigurationFactory {
     public static ProtectionProvider getEeSignaturebasedProtectionProvider() throws Exception {
         if (eeSignaturebasedProtectionProvider == null) {
             eeSignaturebasedProtectionProvider =
-                    ProtectionProviderFactory.createProtectionProvider(new TrustChainAndPrivateKey(
-                            // "credentials/CMP_EE_Keystore_EdDSA.p12",
-                            // "credentials/CMP_EE_Keystore_RSA.p12",
-                            "credentials/CMP_EE_Keystore.p12", TestUtils.PASSWORD_AS_CHAR_ARRAY));
+                    ProtectionProviderFactory.createProtectionProvider(getEeSignaturebasedCredentials());
         }
         return eeSignaturebasedProtectionProvider;
+    }
+
+    private static TrustChainAndPrivateKey eeSignaturebasedCredentials;
+    private static SharedSecret eeSharedSecretCredentials;
+
+    public static TrustChainAndPrivateKey getEeSignaturebasedCredentials() throws Exception {
+        if (eeSignaturebasedCredentials == null)
+            eeSignaturebasedCredentials = new TrustChainAndPrivateKey(
+                    // "credentials/CMP_EE_Keystore_EdDSA.p12",
+                    // "credentials/CMP_EE_Keystore_RSA.p12",
+                    "credentials/CMP_EE_Keystore.p12", TestUtils.PASSWORD_AS_CHAR_ARRAY);
+        return eeSignaturebasedCredentials;
     }
 
     public static KeyPairGenerator getKeyGenerator() {

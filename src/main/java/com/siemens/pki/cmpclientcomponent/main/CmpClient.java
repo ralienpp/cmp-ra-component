@@ -58,6 +58,7 @@ import org.bouncycastle.asn1.ASN1Encodable;
 import org.bouncycastle.asn1.ASN1Integer;
 import org.bouncycastle.asn1.ASN1ObjectIdentifier;
 import org.bouncycastle.asn1.ASN1Sequence;
+import org.bouncycastle.asn1.DERSequence;
 import org.bouncycastle.asn1.cmp.CMPCertificate;
 import org.bouncycastle.asn1.cmp.CMPObjectIdentifiers;
 import org.bouncycastle.asn1.cmp.CRLSource;
@@ -154,6 +155,22 @@ public class CmpClient
         this.clientContext = clientContext;
     }
 
+    private ArrayList<X509Certificate> fetchCaCertificatesFromValue(final ASN1Encodable infoValue) {
+        if (infoValue == null) {
+            return null;
+        }
+        final ASN1Sequence certificates = ASN1Sequence.getInstance(infoValue);
+        final ArrayList<X509Certificate> ret = new ArrayList<>(certificates.size());
+        certificates.forEach(x -> {
+            try {
+                ret.add(CertUtility.asX509Certificate(x.toASN1Primitive().getEncoded()));
+            } catch (CertificateException | IOException e) {
+                throw new RuntimeException("error decoding certificate", e);
+            }
+        });
+        return ret;
+    }
+
     /**
      * invoke a Get CA certificates GENM request {@inheritDoc}
      */
@@ -162,7 +179,7 @@ public class CmpClient
         final PKIBody requestBody = new PKIBody(
                 PKIBody.TYPE_GEN_MSG, new GenMsgContent(new InfoTypeAndValue(CMPObjectIdentifiers.id_it_caCerts)));
         try {
-            final PKIBody responseBody = requestHandler.sendReceiveInitialBody(requestBody, false);
+            final PKIBody responseBody = requestHandler.sendReceiveInitialBody(requestBody);
             if (responseBody.getType() == PKIBody.TYPE_GEN_REP) {
                 final GenRepContent content = (GenRepContent) responseBody.getContent();
                 final InfoTypeAndValue[] itav = content.toInfoTypeAndValueArray();
@@ -190,7 +207,7 @@ public class CmpClient
                 PKIBody.TYPE_GEN_MSG,
                 new GenMsgContent(new InfoTypeAndValue(CMPObjectIdentifiers.id_it_certReqTemplate)));
         try {
-            final PKIBody responseBody = requestHandler.sendReceiveInitialBody(requestBody, false);
+            final PKIBody responseBody = requestHandler.sendReceiveInitialBody(requestBody);
             if (responseBody.getType() == PKIBody.TYPE_GEN_REP) {
                 final GenRepContent content = (GenRepContent) responseBody.getContent();
                 final InfoTypeAndValue[] itav = content.toInfoTypeAndValueArray();
@@ -211,266 +228,6 @@ public class CmpClient
             throw new RuntimeException("error processing getCertificateRequestTemplate", e);
         }
         return null;
-    }
-
-    /**
-     * invoke a Get root CA certificate update GENM request {@inheritDoc}
-     */
-    @Override
-    public RootCaCertificateUpdateResponse getRootCaCertificateUpdate(final X509Certificate oldRootCaCertificate) {
-
-        try {
-            final PKIBody requestBody = new PKIBody(
-                    PKIBody.TYPE_GEN_MSG,
-                    new GenMsgContent(new InfoTypeAndValue(
-                            CMPObjectIdentifiers.id_it_rootCaCert,
-                            ifNotNull(oldRootCaCertificate, cert -> CMPCertificate.getInstance(cert.getEncoded())))));
-            final PKIBody responseBody = requestHandler.sendReceiveInitialBody(requestBody, false);
-            if (responseBody.getType() == PKIBody.TYPE_GEN_REP) {
-                final GenRepContent content = (GenRepContent) responseBody.getContent();
-                final InfoTypeAndValue[] itav = content.toInfoTypeAndValueArray();
-                if (itav != null) {
-                    for (final InfoTypeAndValue aktitav : itav) {
-                        if (CMPObjectIdentifiers.id_it_rootCaKeyUpdate.equals(aktitav.getInfoType())) {
-                            final ASN1Encodable infoValue = aktitav.getInfoValue();
-                            if (infoValue == null) {
-                                return null;
-                            }
-                            RootCaKeyUpdateContent ret = RootCaKeyUpdateContent.getInstance(infoValue);
-
-                            return new RootCaCertificateUpdateResponse() {
-
-                                @Override
-                                public X509Certificate getNewWithNew() {
-                                    try {
-                                        return ifNotNull(ret.getNewWithNew(), CertUtility::asX509Certificate);
-                                    } catch (CertificateException e) {
-                                        throw new RuntimeException(e);
-                                    }
-                                }
-
-                                @Override
-                                public X509Certificate getNewWithOld() {
-                                    try {
-                                        return ifNotNull(ret.getNewWithOld(), CertUtility::asX509Certificate);
-                                    } catch (CertificateException e) {
-                                        throw new RuntimeException(e);
-                                    }
-                                }
-
-                                @Override
-                                public X509Certificate getOldWithNew() {
-                                    try {
-                                        return ifNotNull(ret.getOldWithNew(), CertUtility::asX509Certificate);
-                                    } catch (CertificateException e) {
-                                        throw new RuntimeException(e);
-                                    }
-                                }
-                            };
-                        }
-                    }
-                }
-            }
-            logUnexpectedResponse(responseBody);
-        } catch (final Exception e) {
-            throw new RuntimeException("error processing getCertificateRequestTemplate", e);
-        }
-        return null;
-    }
-
-    /**
-     * invoke a IR or CR enrollment transaction
-     *
-     * @return result of successful enrollment transaction or <code>null</code>
-     */
-    public EnrollmentResult invokeEnrollment() {
-
-        try {
-            EnrollmentContext enrollmentContext = clientContext.getEnrollmentContext();
-
-            final KeyPair certificateKeypair = enrollmentContext.getCertificateKeypair();
-            final CertTemplateBuilder ctb = new CertTemplateBuilder()
-                    .setSubject(ifNotNull(enrollmentContext.getSubject(), s -> new X500Name(s)))
-                    .setPublicKey(ifNotNull(
-                            certificateKeypair,
-                            kp -> SubjectPublicKeyInfo.getInstance(
-                                    kp.getPublic().getEncoded())));
-            List<TemplateExtension> templateExtensions = enrollmentContext.getExtensions();
-            if (templateExtensions != null) {
-                Extension[] extensions = new Extension[templateExtensions.size()];
-                int aktIndex = 0;
-                for (TemplateExtension aktTemplateExtension : templateExtensions) {
-                    extensions[aktIndex++] = new Extension(
-                            new ASN1ObjectIdentifier(aktTemplateExtension.getId()),
-                            aktTemplateExtension.isCritical(),
-                            aktTemplateExtension.getValue());
-                }
-                ctb.setExtensions(new Extensions(extensions));
-            }
-
-            PrivateKey enrolledPrivateKey = null;
-            if (certificateKeypair != null) {
-                enrolledPrivateKey = certificateKeypair.getPrivate();
-            }
-
-            Controls controls = ifNotNull(
-                    enrollmentContext.getOldCert(),
-                    oldCert -> new Controls(new AttributeTypeAndValue(
-                            CMPObjectIdentifiers.regCtrl_oldCertID,
-                            new CertId(
-                                    new GeneralName(new X500Name(
-                                            oldCert.getIssuerX500Principal().getName())),
-                                    oldCert.getSerialNumber()))));
-
-            final PKIBody requestBody = PkiMessageGenerator.generateIrCrKurBody(
-                    enrollmentContext.getEnrollmentType(), ctb.build(), controls, enrolledPrivateKey);
-
-            final PKIMessage responseMessage = requestHandler.sendReceiveValidateMessage(
-                    requestHandler.buildInitialRequest(requestBody, enrollmentContext.getRequestImplictConfirm()));
-            PKIBody responseBody = responseMessage.getBody();
-            if (responseBody.getType() != requestBody.getType() + 1) {
-                logUnexpectedResponse(responseBody);
-                return null;
-            }
-            CertRepMessage certRepMessage = (CertRepMessage) responseBody.getContent();
-            final CertResponse certResponse = certRepMessage.getResponse()[0];
-
-            final int status = certResponse.getStatus().getStatus().intValue();
-            if (status != PKIStatus.GRANTED && status != PKIStatus.GRANTED_WITH_MODS) {
-                logUnexpectedResponse(responseBody);
-                return null;
-            }
-            final CertifiedKeyPair certifiedKeyPair = certResponse.getCertifiedKeyPair();
-            final CMPCertificate enrolledCertificate =
-                    certifiedKeyPair.getCertOrEncCert().getCertificate();
-
-            if (enrolledPrivateKey == null) {
-                // central key generation in place, decrypt private key
-                CmsDecryptor decryptor = null;
-                ProtectionProvider outputProtection = requestHandler.getOutputProtection();
-                if (outputProtection instanceof SignatureBasedProtection) {
-                    SignatureBasedProtection sigProtector = (SignatureBasedProtection) outputProtection;
-                    decryptor = new CmsDecryptor(sigProtector.getEndCertificate(), sigProtector.getPrivateKey(), null);
-                } else if (outputProtection instanceof MacProtection) {
-                    MacProtection macProtector = (MacProtection) outputProtection;
-                    decryptor = new CmsDecryptor(
-                            null, null, AlgorithmHelper.convertSharedSecretToPassword(macProtector.getSharedSecret()));
-                } else {
-                    LOGGER.error("wrong or missing local credentials, no key decryption possible");
-                    return null;
-                }
-                DataSignVerifier verifier = new DataSignVerifier(requestHandler.getInputVerification());
-                enrolledPrivateKey = verifier.verifySignedKey(decryptor.decrypt(EnvelopedData.getInstance(
-                        certifiedKeyPair.getPrivateKey().getValue())));
-            }
-            if (!grantsImplicitConfirm(responseMessage) || !enrollmentContext.getRequestImplictConfirm()) {
-                PKIMessage certConf = requestHandler.buildFurtherRequest(
-                        responseMessage, PkiMessageGenerator.generateCertConfBody(enrolledCertificate));
-                PKIMessage pkiConf = requestHandler.sendReceiveValidateMessage(certConf);
-                final PKIBody pkiConfBody = pkiConf.getBody();
-                if (pkiConfBody.getType() != PKIBody.TYPE_CONFIRM) {
-                    logUnexpectedResponse(pkiConfBody);
-                    return null;
-                }
-            }
-
-            final PrivateKey returnedPrivateKey = enrolledPrivateKey;
-
-            return new EnrollmentResult() {
-
-                @Override
-                public PrivateKey getPrivateKey() {
-                    return returnedPrivateKey;
-                }
-
-                @Override
-                public List<X509Certificate> getEnrollmentChain() {
-                    List<X509Certificate> ret = new ArrayList<>();
-                    try {
-                        ret.addAll(new TrustCredentialAdapter(enrollmentContext.getEnrollmentTrust())
-                                .validateCertAgainstTrust(
-                                        getEnrolledCertificate(),
-                                        CertUtility.asX509Certificates(responseMessage.getExtraCerts())));
-                        return ret;
-                    } catch (CertificateException e) {
-                        LOGGER.error("error building enrollment chain", e);
-                        return null;
-                    }
-                }
-
-                @Override
-                public X509Certificate getEnrolledCertificate() {
-                    try {
-                        return CertUtility.asX509Certificate(enrolledCertificate);
-                    } catch (CertificateException e) {
-                        return null;
-                    }
-                }
-            };
-
-        } catch (Exception e) {
-            throw new RuntimeException("error processing invokeEnrollment", e);
-        }
-    }
-
-    /**
-     * invoke a revocation transaction
-     *
-     * @return <code>true</code> on success, <code>false</code> on failure
-     */
-    public boolean invokeRevocation() {
-        RevocationContext revocationContext = clientContext.getRevocationContext();
-        try {
-            PKIBody rrBody = PkiMessageGenerator.generateRrBody(
-                    new X500Name(revocationContext.getIssuer()),
-                    new ASN1Integer(revocationContext.getSerialNumber()),
-                    revocationContext.getRevocationReason());
-            final PKIBody responseBody = requestHandler.sendReceiveInitialBody(rrBody, false);
-            if (responseBody.getType() == PKIBody.TYPE_REVOCATION_REP) {
-                RevRepContent revRepContent = (RevRepContent) responseBody.getContent();
-                return revRepContent.getStatus()[0].getStatus().intValue() == PKIStatus.GRANTED;
-            }
-            logUnexpectedResponse(responseBody);
-        } catch (final Exception e) {
-            throw new RuntimeException("error processing getCertificateRequestTemplate", e);
-        }
-        return false;
-    }
-
-    private ArrayList<X509Certificate> fetchCaCertificatesFromValue(final ASN1Encodable infoValue) {
-        if (infoValue == null) {
-            return null;
-        }
-        final ASN1Sequence certificates = ASN1Sequence.getInstance(infoValue);
-        final ArrayList<X509Certificate> ret = new ArrayList<>(certificates.size());
-        certificates.forEach(x -> {
-            try {
-                ret.add(CertUtility.asX509Certificate(x.toASN1Primitive().getEncoded()));
-            } catch (CertificateException | IOException e) {
-                throw new RuntimeException("error decoding certificate", e);
-            }
-        });
-        return ret;
-    }
-
-    private boolean grantsImplicitConfirm(final PKIMessage msg) {
-        final InfoTypeAndValue[] generalInfo = msg.getHeader().getGeneralInfo();
-        if (generalInfo == null) {
-            return false;
-        }
-        for (final InfoTypeAndValue aktGenInfo : generalInfo) {
-            if (aktGenInfo.getInfoType().equals(CMPObjectIdentifiers.it_implicitConfirm)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private void logUnexpectedResponse(PKIBody body) {
-        LOGGER.warn("got unexpected response: " + MessageDumper.msgTypeAsString(body.getType()));
-        if (LOGGER.isTraceEnabled()) {
-            LOGGER.trace("message body: \n" + MessageDumper.dumpAsn1Object(body));
-        }
     }
 
     @Override
@@ -496,20 +253,21 @@ public class CmpClient
                     new X500Name(dpnNameRelativeToCRLIssuer).getRDNs()[0]);
         }
 
-        GeneralNames issuers = ifNotNull(
+        final GeneralNames issuers = ifNotNull(
                 issuer,
-                (x) -> new GeneralNames(Arrays.stream(x)
+                x -> new GeneralNames(Arrays.stream(x)
                         .map(X500Name::new)
                         .map(GeneralName::new)
                         .toArray(GeneralName[]::new)));
 
-        CRLStatus crlStatus = new CRLStatus(new CRLSource(dpn, issuers), ifNotNull(thisUpdate, Time::new));
+        final CRLStatus crlStatus = new CRLStatus(new CRLSource(dpn, issuers), ifNotNull(thisUpdate, Time::new));
 
         final PKIBody requestBody = new PKIBody(
                 PKIBody.TYPE_GEN_MSG,
-                new GenMsgContent(new InfoTypeAndValue(CMPObjectIdentifiers.id_it_crlStatusList, crlStatus)));
+                new GenMsgContent(
+                        new InfoTypeAndValue(CMPObjectIdentifiers.id_it_crlStatusList, new DERSequence(crlStatus))));
         try {
-            final PKIBody responseBody = requestHandler.sendReceiveInitialBody(requestBody, false);
+            final PKIBody responseBody = requestHandler.sendReceiveInitialBody(requestBody);
             if (responseBody.getType() == PKIBody.TYPE_GEN_REP) {
                 final GenRepContent content = (GenRepContent) responseBody.getContent();
                 final InfoTypeAndValue[] itav = content.toInfoTypeAndValueArray();
@@ -520,10 +278,10 @@ public class CmpClient
                             if (infoValue == null) {
                                 return null;
                             }
-                            CertificateFactory certificateFactory = CertUtility.getCertificateFactory();
-                            ASN1Sequence crls = ASN1Sequence.getInstance(infoValue);
-                            List<X509CRL> ret = new ArrayList<>(crls.size());
-                            for (ASN1Encodable aktCrl : crls) {
+                            final CertificateFactory certificateFactory = CertUtility.getCertificateFactory();
+                            final ASN1Sequence crls = ASN1Sequence.getInstance(infoValue);
+                            final List<X509CRL> ret = new ArrayList<>(crls.size());
+                            for (final ASN1Encodable aktCrl : crls) {
                                 ret.add((X509CRL) certificateFactory.generateCRL(new ByteArrayInputStream(
                                         aktCrl.toASN1Primitive().getEncoded())));
                             }
@@ -537,5 +295,251 @@ public class CmpClient
             throw new RuntimeException("error processing getCertificateRequestTemplate", e);
         }
         return null;
+    }
+
+    /**
+     * invoke a Get root CA certificate update GENM request {@inheritDoc}
+     */
+    @Override
+    public RootCaCertificateUpdateResponse getRootCaCertificateUpdate(final X509Certificate oldRootCaCertificate) {
+
+        try {
+            final PKIBody requestBody = new PKIBody(
+                    PKIBody.TYPE_GEN_MSG,
+                    new GenMsgContent(new InfoTypeAndValue(
+                            CMPObjectIdentifiers.id_it_rootCaCert,
+                            ifNotNull(oldRootCaCertificate, cert -> CMPCertificate.getInstance(cert.getEncoded())))));
+            final PKIBody responseBody = requestHandler.sendReceiveInitialBody(requestBody);
+            if (responseBody.getType() == PKIBody.TYPE_GEN_REP) {
+                final GenRepContent content = (GenRepContent) responseBody.getContent();
+                final InfoTypeAndValue[] itav = content.toInfoTypeAndValueArray();
+                if (itav != null) {
+                    for (final InfoTypeAndValue aktitav : itav) {
+                        if (CMPObjectIdentifiers.id_it_rootCaKeyUpdate.equals(aktitav.getInfoType())) {
+                            final ASN1Encodable infoValue = aktitav.getInfoValue();
+                            if (infoValue == null) {
+                                return null;
+                            }
+                            final RootCaKeyUpdateContent ret = RootCaKeyUpdateContent.getInstance(infoValue);
+
+                            return new RootCaCertificateUpdateResponse() {
+
+                                @Override
+                                public X509Certificate getNewWithNew() {
+                                    try {
+                                        return ifNotNull(ret.getNewWithNew(), CertUtility::asX509Certificate);
+                                    } catch (final CertificateException e) {
+                                        throw new RuntimeException(e);
+                                    }
+                                }
+
+                                @Override
+                                public X509Certificate getNewWithOld() {
+                                    try {
+                                        return ifNotNull(ret.getNewWithOld(), CertUtility::asX509Certificate);
+                                    } catch (final CertificateException e) {
+                                        throw new RuntimeException(e);
+                                    }
+                                }
+
+                                @Override
+                                public X509Certificate getOldWithNew() {
+                                    try {
+                                        return ifNotNull(ret.getOldWithNew(), CertUtility::asX509Certificate);
+                                    } catch (final CertificateException e) {
+                                        throw new RuntimeException(e);
+                                    }
+                                }
+                            };
+                        }
+                    }
+                }
+            }
+            logUnexpectedResponse(responseBody);
+        } catch (final Exception e) {
+            throw new RuntimeException("error processing getCertificateRequestTemplate", e);
+        }
+        return null;
+    }
+
+    private boolean grantsImplicitConfirm(final PKIMessage msg) {
+        final InfoTypeAndValue[] generalInfo = msg.getHeader().getGeneralInfo();
+        if (generalInfo == null) {
+            return false;
+        }
+        for (final InfoTypeAndValue aktGenInfo : generalInfo) {
+            if (aktGenInfo.getInfoType().equals(CMPObjectIdentifiers.it_implicitConfirm)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * invoke a IR or CR enrollment transaction
+     *
+     * @return result of successful enrollment transaction or <code>null</code>
+     */
+    public EnrollmentResult invokeEnrollment() {
+
+        try {
+            final EnrollmentContext enrollmentContext = clientContext.getEnrollmentContext();
+
+            final KeyPair certificateKeypair = enrollmentContext.getCertificateKeypair();
+            final CertTemplateBuilder ctb = new CertTemplateBuilder()
+                    .setSubject(ifNotNull(enrollmentContext.getSubject(), X500Name::new))
+                    .setPublicKey(ifNotNull(
+                            certificateKeypair,
+                            kp -> SubjectPublicKeyInfo.getInstance(
+                                    kp.getPublic().getEncoded())));
+            final List<TemplateExtension> templateExtensions = enrollmentContext.getExtensions();
+            if (templateExtensions != null) {
+                final Extension[] extensions = new Extension[templateExtensions.size()];
+                int aktIndex = 0;
+                for (final TemplateExtension aktTemplateExtension : templateExtensions) {
+                    extensions[aktIndex++] = new Extension(
+                            new ASN1ObjectIdentifier(aktTemplateExtension.getId()),
+                            aktTemplateExtension.isCritical(),
+                            aktTemplateExtension.getValue());
+                }
+                ctb.setExtensions(new Extensions(extensions));
+            }
+
+            PrivateKey enrolledPrivateKey = null;
+            if (certificateKeypair != null) {
+                enrolledPrivateKey = certificateKeypair.getPrivate();
+            }
+
+            final Controls controls = ifNotNull(
+                    enrollmentContext.getOldCert(),
+                    oldCert -> new Controls(new AttributeTypeAndValue(
+                            CMPObjectIdentifiers.regCtrl_oldCertID,
+                            new CertId(
+                                    new GeneralName(new X500Name(
+                                            oldCert.getIssuerX500Principal().getName())),
+                                    oldCert.getSerialNumber()))));
+
+            final int enrollmentType = enrollmentContext.getEnrollmentType();
+            final PKIBody requestBody =
+                    PkiMessageGenerator.generateIrCrKurBody(enrollmentType, ctb.build(), controls, enrolledPrivateKey);
+
+            final PKIMessage responseMessage = requestHandler.sendReceiveValidateMessage(
+                    requestHandler.buildInitialRequest(requestBody, enrollmentContext.getRequestImplictConfirm()),
+                    enrollmentType);
+            final PKIBody responseBody = responseMessage.getBody();
+            if (responseBody.getType() != requestBody.getType() + 1) {
+                logUnexpectedResponse(responseBody);
+                return null;
+            }
+            final CertRepMessage certRepMessage = (CertRepMessage) responseBody.getContent();
+            final CertResponse certResponse = certRepMessage.getResponse()[0];
+
+            final int status = certResponse.getStatus().getStatus().intValue();
+            if (status != PKIStatus.GRANTED && status != PKIStatus.GRANTED_WITH_MODS) {
+                logUnexpectedResponse(responseBody);
+                return null;
+            }
+            final CertifiedKeyPair certifiedKeyPair = certResponse.getCertifiedKeyPair();
+            final CMPCertificate enrolledCertificate =
+                    certifiedKeyPair.getCertOrEncCert().getCertificate();
+
+            if (enrolledPrivateKey == null) {
+                // central key generation in place, decrypt private key
+                CmsDecryptor decryptor = null;
+                final ProtectionProvider outputProtection = requestHandler.getOutputProtection();
+                if (outputProtection instanceof SignatureBasedProtection) {
+                    final SignatureBasedProtection sigProtector = (SignatureBasedProtection) outputProtection;
+                    decryptor = new CmsDecryptor(sigProtector.getEndCertificate(), sigProtector.getPrivateKey(), null);
+                } else if (outputProtection instanceof MacProtection) {
+                    final MacProtection macProtector = (MacProtection) outputProtection;
+                    decryptor = new CmsDecryptor(
+                            null, null, AlgorithmHelper.convertSharedSecretToPassword(macProtector.getSharedSecret()));
+                } else {
+                    LOGGER.error("wrong or missing local credentials, no key decryption possible");
+                    return null;
+                }
+                final DataSignVerifier verifier = new DataSignVerifier(requestHandler.getInputVerification());
+                enrolledPrivateKey = verifier.verifySignedKey(decryptor.decrypt(EnvelopedData.getInstance(
+                        certifiedKeyPair.getPrivateKey().getValue())));
+            }
+            if (!grantsImplicitConfirm(responseMessage) || !enrollmentContext.getRequestImplictConfirm()) {
+                final PKIMessage certConf = requestHandler.buildFurtherRequest(
+                        responseMessage, PkiMessageGenerator.generateCertConfBody(enrolledCertificate));
+                final PKIMessage pkiConf = requestHandler.sendReceiveValidateMessage(certConf, enrollmentType);
+                final PKIBody pkiConfBody = pkiConf.getBody();
+                if (pkiConfBody.getType() != PKIBody.TYPE_CONFIRM) {
+                    logUnexpectedResponse(pkiConfBody);
+                    return null;
+                }
+            }
+
+            final PrivateKey returnedPrivateKey = enrolledPrivateKey;
+
+            return new EnrollmentResult() {
+
+                @Override
+                public X509Certificate getEnrolledCertificate() {
+                    try {
+                        return CertUtility.asX509Certificate(enrolledCertificate);
+                    } catch (final CertificateException e) {
+                        return null;
+                    }
+                }
+
+                @Override
+                public List<X509Certificate> getEnrollmentChain() {
+                    final List<X509Certificate> ret = new ArrayList<>();
+                    try {
+                        ret.addAll(new TrustCredentialAdapter(enrollmentContext.getEnrollmentTrust())
+                                .validateCertAgainstTrust(
+                                        getEnrolledCertificate(),
+                                        CertUtility.asX509Certificates(responseMessage.getExtraCerts())));
+                        return ret;
+                    } catch (final CertificateException e) {
+                        LOGGER.error("error building enrollment chain", e);
+                        return null;
+                    }
+                }
+
+                @Override
+                public PrivateKey getPrivateKey() {
+                    return returnedPrivateKey;
+                }
+            };
+
+        } catch (final Exception e) {
+            throw new RuntimeException("error processing invokeEnrollment", e);
+        }
+    }
+
+    /**
+     * invoke a revocation transaction
+     *
+     * @return <code>true</code> on success, <code>false</code> on failure
+     */
+    public boolean invokeRevocation() {
+        final RevocationContext revocationContext = clientContext.getRevocationContext();
+        try {
+            final PKIBody rrBody = PkiMessageGenerator.generateRrBody(
+                    new X500Name(revocationContext.getIssuer()),
+                    new ASN1Integer(revocationContext.getSerialNumber()),
+                    revocationContext.getRevocationReason());
+            final PKIBody responseBody = requestHandler.sendReceiveInitialBody(rrBody);
+            if (responseBody.getType() == PKIBody.TYPE_REVOCATION_REP) {
+                final RevRepContent revRepContent = (RevRepContent) responseBody.getContent();
+                return revRepContent.getStatus()[0].getStatus().intValue() == PKIStatus.GRANTED;
+            }
+            logUnexpectedResponse(responseBody);
+        } catch (final Exception e) {
+            throw new RuntimeException("error processing getCertificateRequestTemplate", e);
+        }
+        return false;
+    }
+
+    private void logUnexpectedResponse(final PKIBody body) {
+        LOGGER.warn("got unexpected response: " + MessageDumper.msgTypeAsString(body.getType()));
+        if (LOGGER.isTraceEnabled()) {
+            LOGGER.trace("message body: \n" + MessageDumper.dumpAsn1Object(body));
+        }
     }
 }
