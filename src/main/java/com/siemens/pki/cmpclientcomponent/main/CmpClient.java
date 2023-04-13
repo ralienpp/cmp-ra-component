@@ -531,7 +531,7 @@ public class CmpClient
             }
             logUnexpectedResponse(responseBody);
         } catch (final Exception e) {
-            throw new RuntimeException("error processing getCertificateRequestTemplate", e);
+            throw new RuntimeException("error processing invokeRevocation", e);
         }
         return false;
     }
