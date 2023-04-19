@@ -26,6 +26,7 @@ import com.siemens.pki.cmpracomponent.configuration.CmpMessageInterface;
 import com.siemens.pki.cmpracomponent.configuration.Configuration;
 import com.siemens.pki.cmpracomponent.configuration.CredentialContext;
 import com.siemens.pki.cmpracomponent.configuration.NestedEndpointContext;
+import com.siemens.pki.cmpracomponent.configuration.SharedSecretCredentialContext;
 import com.siemens.pki.cmpracomponent.configuration.VerificationContext;
 import com.siemens.pki.cmpracomponent.cryptoservices.CertUtility;
 import com.siemens.pki.cmpracomponent.main.CmpRaComponent;
@@ -34,6 +35,7 @@ import com.siemens.pki.cmpracomponent.main.CmpRaComponent.UpstreamExchange;
 import com.siemens.pki.cmpracomponent.test.framework.CmpCaMock;
 import com.siemens.pki.cmpracomponent.test.framework.ConfigFileLoader;
 import com.siemens.pki.cmpracomponent.test.framework.ConfigurationFactory;
+import com.siemens.pki.cmpracomponent.test.framework.PasswordValidationCredentials;
 import com.siemens.pki.cmpracomponent.test.framework.SignatureValidationCredentials;
 import java.io.File;
 import java.io.IOException;
@@ -177,5 +179,55 @@ public class CmpClientTestcaseBase {
             }
         };
         return upstreamExchange;
+    }
+
+    protected CmpClient getPasswordBasedCmpClient(
+            final ClientContext clientContext, SharedSecretCredentialContext protection)
+            throws InvalidKeyException, NoSuchAlgorithmException, InvalidKeySpecException, CertificateException {
+        return new CmpClient(getUpstreamExchange(), getPasswordBasedUpstreamconfiguration(protection), clientContext);
+    }
+
+    protected static CmpMessageInterface getPasswordBasedUpstreamconfiguration(
+            SharedSecretCredentialContext protection) {
+        return new CmpMessageInterface() {
+
+            final PasswordValidationCredentials upstreamTrust =
+                    new PasswordValidationCredentials(protection.getSharedSecret());
+
+            @Override
+            public VerificationContext getInputVerification() {
+                return upstreamTrust;
+            }
+
+            @Override
+            public NestedEndpointContext getNestedEndpointContext() {
+                return null;
+            }
+
+            @Override
+            public CredentialContext getOutputCredentials() {
+                return protection;
+            }
+
+            @Override
+            public ReprotectMode getReprotectMode() {
+                return ReprotectMode.reprotect;
+            }
+
+            @Override
+            public boolean getSuppressRedundantExtraCerts() {
+                return false;
+            }
+
+            @Override
+            public boolean isCacheExtraCerts() {
+                return false;
+            }
+
+            @Override
+            public boolean isMessageTimeDeviationAllowed(final long deviation) {
+                return deviation < 10;
+            }
+        };
     }
 }

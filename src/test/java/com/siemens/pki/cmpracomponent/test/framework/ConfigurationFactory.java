@@ -23,6 +23,7 @@ import static org.junit.Assert.fail;
 import com.siemens.pki.cmpracomponent.configuration.CheckAndModifyResult;
 import com.siemens.pki.cmpracomponent.configuration.CkgContext;
 import com.siemens.pki.cmpracomponent.configuration.CmpMessageInterface;
+import com.siemens.pki.cmpracomponent.configuration.CmpMessageInterface.ReprotectMode;
 import com.siemens.pki.cmpracomponent.configuration.Configuration;
 import com.siemens.pki.cmpracomponent.configuration.CredentialContext;
 import com.siemens.pki.cmpracomponent.configuration.CrlUpdateRetrievalHandler;
@@ -87,7 +88,12 @@ public class ConfigurationFactory {
                 new SignatureValidationCredentials("credentials/ENROLL_Root.pem", null);
 
         final Configuration config = buildSimpleRaConfiguration(
-                downstreamCredentials, downstreamTrust, upstreamCredentials, upstreamTrust, enrollmentTrust);
+                downstreamCredentials,
+                ReprotectMode.reprotect,
+                downstreamTrust,
+                upstreamCredentials,
+                upstreamTrust,
+                enrollmentTrust);
         return config;
     }
 
@@ -104,7 +110,12 @@ public class ConfigurationFactory {
                 new SignatureValidationCredentials("credentials/ENROLL_Root.pem", null);
 
         return buildSimpleRaConfiguration(
-                downstreamCredentials, downstreamTrust, upstreamCredentials, upstreamTrust, enrollmentTrust);
+                downstreamCredentials,
+                ReprotectMode.keep,
+                downstreamTrust,
+                upstreamCredentials,
+                upstreamTrust,
+                enrollmentTrust);
     }
 
     public static Configuration buildSignatureBasedDownstreamOnlyConfiguration() throws Exception {
@@ -389,6 +400,7 @@ public class ConfigurationFactory {
 
     public static Configuration buildSimpleRaConfiguration(
             final CredentialContext downstreamCredentials,
+            ReprotectMode reprotectMode,
             final VerificationContext downstreamTrust,
             final CredentialContext upstreamCredentials,
             final VerificationContext upstreamTrust,
@@ -441,7 +453,7 @@ public class ConfigurationFactory {
 
                     @Override
                     public ReprotectMode getReprotectMode() {
-                        return ReprotectMode.keep;
+                        return reprotectMode;
                     }
 
                     @Override
