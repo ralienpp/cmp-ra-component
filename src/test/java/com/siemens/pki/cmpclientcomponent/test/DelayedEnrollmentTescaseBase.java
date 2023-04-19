@@ -30,8 +30,7 @@ import java.security.KeyPair;
 import java.security.cert.X509Certificate;
 import java.util.List;
 
-public class EnrollmentTestcaseBase extends CmpClientTestcaseBase {
-
+public class DelayedEnrollmentTescaseBase extends DelayedDeliveryTestcaseBase {
     private SignatureValidationCredentials enrollmentCredentials;
 
     ClientContext getClientContext(final int enrollmentType) {

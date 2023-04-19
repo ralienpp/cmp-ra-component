@@ -107,7 +107,7 @@ public class CmpClientTestcaseBase {
         Security.addProvider(CertUtility.getBouncyCastleProvider());
     }
 
-    private UpstreamExchange upstreamExchange;
+    protected UpstreamExchange upstreamExchange;
 
     protected CmpClient getSignatureBasedCmpClient(final ClientContext clientContext, final String upstreamTrustPath)
             throws InvalidKeyException, NoSuchAlgorithmException, InvalidKeySpecException, CertificateException {

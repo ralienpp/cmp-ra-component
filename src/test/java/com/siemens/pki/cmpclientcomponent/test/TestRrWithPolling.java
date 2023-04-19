@@ -15,7 +15,6 @@
  *
  *  SPDX-License-Identifier: Apache-2.0
  */
-
 package com.siemens.pki.cmpclientcomponent.test;
 
 import static org.junit.Assert.assertTrue;
@@ -42,22 +41,22 @@ import org.bouncycastle.asn1.cmp.PKIBody;
 import org.junit.Before;
 import org.junit.Test;
 
-public class TestSignaturebasedRr extends EnrollmentTestcaseBase {
-
-    private static final String UPSTREAM_TRUST_PATH = "credentials/CMP_CA_Root.pem";
+public class TestRrWithPolling extends DelayedEnrollmentTescaseBase {
+    private static final String UPSTREAM_TRUST_PATH = "credentials/CMP_CA_and_LRA_DOWNSTREAM_Root.pem";
 
     @Before
     public void setUp() throws Exception {
-        launchCmpCaAndRa(ConfigurationFactory.buildSignatureBasedDownstreamConfiguration());
+        launchDelayedCmpCaAndRa(ConfigurationFactory.buildSignatureBasedDownstreamConfiguration());
     }
 
     /**
-     * Revoke a Valid Certificate
+     * Revoking a certificate/Handling Delayed Delivery
      *
      * @throws Exception
      */
     @Test
-    public void testRr() throws Exception {
+    public void testRrWithPolling() throws Exception {
+
         final CmpClient crClient =
                 getSignatureBasedCmpClient(getClientContext(PKIBody.TYPE_CERT_REQ), UPSTREAM_TRUST_PATH);
 
