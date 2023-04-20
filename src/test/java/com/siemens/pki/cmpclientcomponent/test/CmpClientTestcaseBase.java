@@ -43,7 +43,9 @@ import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.Security;
 import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
 import java.security.spec.InvalidKeySpecException;
+import java.util.Collection;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import org.junit.BeforeClass;
@@ -182,21 +184,38 @@ public class CmpClientTestcaseBase {
     }
 
     protected CmpClient getPasswordBasedCmpClient(
-            final ClientContext clientContext, SharedSecretCredentialContext protection)
+            final ClientContext clientContext,
+            SharedSecretCredentialContext protection,
+            SignatureValidationCredentials keyValidationCredentials)
             throws InvalidKeyException, NoSuchAlgorithmException, InvalidKeySpecException, CertificateException {
-        return new CmpClient(getUpstreamExchange(), getPasswordBasedUpstreamconfiguration(protection), clientContext);
+        return new CmpClient(
+                getUpstreamExchange(),
+                getPasswordBasedUpstreamconfiguration(protection, keyValidationCredentials),
+                clientContext);
     }
 
     protected static CmpMessageInterface getPasswordBasedUpstreamconfiguration(
-            SharedSecretCredentialContext protection) {
+            SharedSecretCredentialContext protection, SignatureValidationCredentials keyValidationCredentials) {
         return new CmpMessageInterface() {
 
-            final PasswordValidationCredentials upstreamTrust =
+            final PasswordValidationCredentials passwordUpstreamTrust =
                     new PasswordValidationCredentials(protection.getSharedSecret());
 
             @Override
             public VerificationContext getInputVerification() {
-                return upstreamTrust;
+                return new VerificationContext() {
+                    public byte[] getSharedSecret(byte[] senderKID) {
+                        return passwordUpstreamTrust.getSharedSecret(senderKID);
+                    }
+
+                    public Collection<X509Certificate> getAdditionalCerts() {
+                        return keyValidationCredentials.getAdditionalCerts();
+                    }
+
+                    public Collection<X509Certificate> getTrustedCertificates() {
+                        return keyValidationCredentials.getTrustedCertificates();
+                    }
+                };
             }
 
             @Override

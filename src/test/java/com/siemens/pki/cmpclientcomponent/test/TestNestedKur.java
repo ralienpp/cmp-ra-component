@@ -585,8 +585,11 @@ public class TestNestedKur extends EnrollmentTestcaseBase {
      */
     @Test
     public void testKur() throws Exception {
-        final CmpClient crClient =
-                getSignatureBasedCmpClient(getClientContext(PKIBody.TYPE_CERT_REQ), UPSTREAM_TRUST_PATH);
+        final CmpClient crClient = getSignatureBasedCmpClient(
+                getClientContext(
+                        PKIBody.TYPE_CERT_REQ,
+                        ConfigurationFactory.getKeyGenerator().generateKeyPair()),
+                UPSTREAM_TRUST_PATH);
         final EnrollmentResult crResult = crClient.invokeEnrollment();
 
         final X509Certificate crEnrolledCertificate = crResult.getEnrolledCertificate();

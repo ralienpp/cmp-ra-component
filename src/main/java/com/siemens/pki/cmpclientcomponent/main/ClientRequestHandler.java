@@ -131,7 +131,7 @@ class ClientRequestHandler {
         return buildInitialRequest(requestBody, withImplicitConfirm, DEFAULT_PVNO);
     }
 
-    private PKIMessage buildInitialRequest(final PKIBody requestBody, final boolean withImplicitConfirm, final int pvno)
+    PKIMessage buildInitialRequest(final PKIBody requestBody, final boolean withImplicitConfirm, final int pvno)
             throws Exception {
         return buildRequest(
                 requestBody, new DEROctetString(CertUtility.generateRandomBytes(16)), null, pvno, withImplicitConfirm);

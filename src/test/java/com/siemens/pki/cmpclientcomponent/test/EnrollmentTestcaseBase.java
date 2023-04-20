@@ -23,7 +23,6 @@ import com.siemens.pki.cmpclientcomponent.configuration.ClientContext;
 import com.siemens.pki.cmpclientcomponent.configuration.EnrollmentContext;
 import com.siemens.pki.cmpclientcomponent.configuration.RevocationContext;
 import com.siemens.pki.cmpracomponent.configuration.VerificationContext;
-import com.siemens.pki.cmpracomponent.test.framework.ConfigurationFactory;
 import com.siemens.pki.cmpracomponent.test.framework.SignatureValidationCredentials;
 import com.siemens.pki.cmpracomponent.test.framework.TestUtils;
 import java.security.KeyPair;
@@ -32,12 +31,10 @@ import java.util.List;
 
 public class EnrollmentTestcaseBase extends CmpClientTestcaseBase {
 
-    private SignatureValidationCredentials enrollmentCredentials;
+    SignatureValidationCredentials enrollmentCredentials;
 
-    ClientContext getClientContext(final int enrollmentType) {
+    ClientContext getClientContext(final int enrollmentType, KeyPair keyPair) {
         final ClientContext clientContext = new ClientContext() {
-
-            KeyPair keyPair = ConfigurationFactory.getKeyGenerator().generateKeyPair();
 
             @Override
             public String getCertProfile() {

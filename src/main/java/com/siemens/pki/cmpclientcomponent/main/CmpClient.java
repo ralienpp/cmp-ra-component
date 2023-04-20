@@ -71,6 +71,7 @@ import org.bouncycastle.asn1.cmp.GenMsgContent;
 import org.bouncycastle.asn1.cmp.GenRepContent;
 import org.bouncycastle.asn1.cmp.InfoTypeAndValue;
 import org.bouncycastle.asn1.cmp.PKIBody;
+import org.bouncycastle.asn1.cmp.PKIHeader;
 import org.bouncycastle.asn1.cmp.PKIMessage;
 import org.bouncycastle.asn1.cmp.PKIStatus;
 import org.bouncycastle.asn1.cmp.RevRepContent;
@@ -424,7 +425,10 @@ public class CmpClient
                     PkiMessageGenerator.generateIrCrKurBody(enrollmentType, ctb.build(), controls, enrolledPrivateKey);
 
             final PKIMessage responseMessage = requestHandler.sendReceiveValidateMessage(
-                    requestHandler.buildInitialRequest(requestBody, enrollmentContext.getRequestImplictConfirm()),
+                    requestHandler.buildInitialRequest(
+                            requestBody,
+                            enrollmentContext.getRequestImplictConfirm(),
+                            enrolledPrivateKey != null ? PKIHeader.CMP_2000 : PKIHeader.CMP_2021),
                     enrollmentType);
             final PKIBody responseBody = responseMessage.getBody();
             if (responseBody.getType() != requestBody.getType() + 1) {
@@ -459,8 +463,13 @@ public class CmpClient
                     return null;
                 }
                 final DataSignVerifier verifier = new DataSignVerifier(requestHandler.getInputVerification());
-                enrolledPrivateKey = verifier.verifySignedKey(decryptor.decrypt(EnvelopedData.getInstance(
-                        certifiedKeyPair.getPrivateKey().getValue())));
+                byte[] decryptedKey = decryptor.decrypt(EnvelopedData.getInstance(
+                        certifiedKeyPair.getPrivateKey().getValue()));
+                enrolledPrivateKey = verifier.verifySignedKey(decryptedKey);
+                if (enrolledPrivateKey == null) {
+                    LOGGER.error("could not verify private key");
+                    return null;
+                }
             }
             if (!grantsImplicitConfirm(responseMessage) || !enrollmentContext.getRequestImplictConfirm()) {
                 final PKIMessage certConf = requestHandler.buildFurtherRequest(

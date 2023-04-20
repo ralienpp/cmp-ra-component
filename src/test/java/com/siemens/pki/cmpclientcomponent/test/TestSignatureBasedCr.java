@@ -37,7 +37,10 @@ public class TestSignatureBasedCr extends EnrollmentTestcaseBase {
     @Test
     public void testCr() throws Exception {
         final EnrollmentResult ret = getSignatureBasedCmpClient(
-                        getClientContext(PKIBody.TYPE_CERT_REQ), UPSTREAM_TRUST_PATH)
+                        getClientContext(
+                                PKIBody.TYPE_CERT_REQ,
+                                ConfigurationFactory.getKeyGenerator().generateKeyPair()),
+                        UPSTREAM_TRUST_PATH)
                 .invokeEnrollment();
         assertNotNull(ret);
     }

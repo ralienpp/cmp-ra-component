@@ -39,8 +39,11 @@ public class TestPasswordBasedIr extends EnrollmentTestcaseBase {
     @Test
     public void testIr() throws Exception {
         final EnrollmentResult ret = getPasswordBasedCmpClient(
-                        getClientContext(PKIBody.TYPE_CERT_REQ),
-                        new SharedSecret("PASSWORDBASEDMAC", TestUtils.PASSWORD))
+                        getClientContext(
+                                PKIBody.TYPE_CERT_REQ,
+                                ConfigurationFactory.getKeyGenerator().generateKeyPair()),
+                        new SharedSecret("PASSWORDBASEDMAC", TestUtils.PASSWORD),
+                        null)
                 .invokeEnrollment();
         assertNotNull(ret);
     }
@@ -54,7 +57,11 @@ public class TestPasswordBasedIr extends EnrollmentTestcaseBase {
     @Test
     public void testPbmac1Ir() throws Exception {
         final EnrollmentResult ret = getPasswordBasedCmpClient(
-                        getClientContext(PKIBody.TYPE_CERT_REQ), new SharedSecret("PBMAC1", TestUtils.PASSWORD))
+                        getClientContext(
+                                PKIBody.TYPE_CERT_REQ,
+                                ConfigurationFactory.getKeyGenerator().generateKeyPair()),
+                        new SharedSecret("PBMAC1", TestUtils.PASSWORD),
+                        null)
                 .invokeEnrollment();
         assertNotNull(ret);
     }
