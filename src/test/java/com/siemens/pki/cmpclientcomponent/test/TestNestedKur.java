@@ -634,7 +634,6 @@ public class TestNestedKur extends EnrollmentTestcaseBase {
 
                     @Override
                     public boolean getRequestImplictConfirm() {
-                        // TODO Auto-generated method stub
                         return false;
                     }
 
@@ -673,7 +672,6 @@ public class TestNestedKur extends EnrollmentTestcaseBase {
 
             @Override
             public CredentialContext getOutputCredentials() {
-                // TODO Auto-generated method stub
                 return new SignatureCredentialContext() {
 
                     @Override
