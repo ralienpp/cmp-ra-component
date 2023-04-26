@@ -33,6 +33,7 @@ import com.siemens.pki.cmpracomponent.msgvalidation.MessageHeaderValidator;
 import com.siemens.pki.cmpracomponent.msgvalidation.ProtectionValidator;
 import com.siemens.pki.cmpracomponent.protection.ProtectionProvider;
 import com.siemens.pki.cmpracomponent.protection.ProtectionProviderFactory;
+import com.siemens.pki.cmpracomponent.util.FileTracer;
 import com.siemens.pki.cmpracomponent.util.MessageDumper;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
@@ -69,7 +70,7 @@ class ClientRequestHandler {
 
     private static final int DEFAULT_PVNO = PKIHeader.CMP_2000;
 
-    private static final String INTERFACE_NAME = "CMP interface";
+    private static final String INTERFACE_NAME = "ClientUpstream";
 
     /** The usual Logger. */
     private static final Logger LOGGER = LoggerFactory.getLogger(ClientRequestHandler.class);
@@ -244,11 +245,13 @@ class ClientRequestHandler {
         if (LOGGER.isTraceEnabled()) {
             LOGGER.trace("client sends:\n" + MessageDumper.dumpPkiMessage(request));
         }
+        FileTracer.logMessage(request, INTERFACE_NAME);
         byte[] rawresponse = upstreamExchange.sendReceiveMessage(request.getEncoded(), certProfile, firstRequestType);
         if (rawresponse == null) {
             return null;
         }
         PKIMessage response = PKIMessage.getInstance(rawresponse);
+        FileTracer.logMessage(response, INTERFACE_NAME);
         if (LOGGER.isTraceEnabled()) {
             LOGGER.trace("client received:\n" + MessageDumper.dumpPkiMessage(response));
         }
