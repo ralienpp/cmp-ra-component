@@ -84,7 +84,8 @@ public interface EnrollmentContext {
     /**
      * extensions to be added to the CRMF template
      *
-     * @return list of extensions or <code>null</code>
+     * @return list of extensions or <code>null</code> if extensions should taken
+     *         from {@link #getOldCert()} or absent
      */
     List<TemplateExtension> getExtensions();
 
@@ -97,7 +98,7 @@ public interface EnrollmentContext {
 
     /**
      * subject to be inserted in the CRMF template or <code>null</code> if subject
-     * should be absent
+     * should taken from {@link #getOldCert()} or absent
      *
      * @return the subject or <code>null</code>
      */

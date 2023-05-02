@@ -54,6 +54,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
+import java.util.Set;
 import org.bouncycastle.asn1.ASN1Encodable;
 import org.bouncycastle.asn1.ASN1Integer;
 import org.bouncycastle.asn1.ASN1ObjectIdentifier;
@@ -392,38 +393,91 @@ public class CmpClient
             final EnrollmentContext enrollmentContext = clientContext.getEnrollmentContext();
 
             final KeyPair certificateKeypair = enrollmentContext.getCertificateKeypair();
+
+            String subject = enrollmentContext.getSubject();
+            List<TemplateExtension> extensions = enrollmentContext.getExtensions();
+            X509Certificate oldCert = enrollmentContext.getOldCert();
+            if (oldCert != null) {
+                if (subject == null) {
+                    subject = oldCert.getSubjectDN().getName();
+                }
+                if (extensions == null) {
+                    extensions = new ArrayList<>();
+                    Set<String> criticalExtensionOIDs = oldCert.getCriticalExtensionOIDs();
+                    if (criticalExtensionOIDs != null)
+                        for (String oid : criticalExtensionOIDs) {
+                            extensions.add(new TemplateExtension() {
+
+                                @Override
+                                public boolean isCritical() {
+                                    return true;
+                                }
+
+                                @Override
+                                public byte[] getValue() {
+                                    return oldCert.getExtensionValue(oid);
+                                }
+
+                                @Override
+                                public String getId() {
+                                    return oid;
+                                }
+                            });
+                        }
+                    Set<String> nonCriticalExtensionOIDs = oldCert.getNonCriticalExtensionOIDs();
+                    if (nonCriticalExtensionOIDs != null)
+                        for (String oid : nonCriticalExtensionOIDs) {
+                            extensions.add(new TemplateExtension() {
+
+                                @Override
+                                public boolean isCritical() {
+                                    return false;
+                                }
+
+                                @Override
+                                public byte[] getValue() {
+                                    return oldCert.getExtensionValue(oid);
+                                }
+
+                                @Override
+                                public String getId() {
+                                    return oid;
+                                }
+                            });
+                        }
+                }
+            }
+
             final CertTemplateBuilder ctb = new CertTemplateBuilder()
-                    .setSubject(ifNotNull(enrollmentContext.getSubject(), X500Name::new))
+                    .setSubject(ifNotNull(subject, X500Name::new))
                     .setPublicKey(ifNotNull(
                             certificateKeypair,
                             kp -> SubjectPublicKeyInfo.getInstance(
                                     kp.getPublic().getEncoded())));
-            final List<TemplateExtension> templateExtensions = enrollmentContext.getExtensions();
-            if (templateExtensions != null) {
-                final Extension[] extensions = new Extension[templateExtensions.size()];
+            if (extensions != null) {
+                final Extension[] extensionsAsArray = new Extension[extensions.size()];
                 int aktIndex = 0;
-                for (final TemplateExtension aktTemplateExtension : templateExtensions) {
-                    extensions[aktIndex++] = new Extension(
+                for (final TemplateExtension aktTemplateExtension : extensions) {
+                    extensionsAsArray[aktIndex++] = new Extension(
                             new ASN1ObjectIdentifier(aktTemplateExtension.getId()),
                             aktTemplateExtension.isCritical(),
                             aktTemplateExtension.getValue());
                 }
-                ctb.setExtensions(new Extensions(extensions));
+                ctb.setExtensions(new Extensions(extensionsAsArray));
             }
 
             PrivateKey enrolledPrivateKey = null;
             if (certificateKeypair != null) {
                 enrolledPrivateKey = certificateKeypair.getPrivate();
             }
-
             final Controls controls = ifNotNull(
-                    enrollmentContext.getOldCert(),
-                    oldCert -> new Controls(new AttributeTypeAndValue(
+                    oldCert,
+                    oc -> new Controls(new AttributeTypeAndValue(
                             CMPObjectIdentifiers.regCtrl_oldCertID,
                             new CertId(
                                     new GeneralName(new X500Name(
-                                            oldCert.getIssuerX500Principal().getName())),
-                                    oldCert.getSerialNumber()))));
+                                            oc.getIssuerX500Principal().getName())),
+                                    oc.getSerialNumber()))));
 
             final int enrollmentType = enrollmentContext.getEnrollmentType();
             final PKIBody requestBody =
