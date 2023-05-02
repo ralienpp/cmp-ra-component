@@ -39,11 +39,6 @@ public class DelayedEnrollmentTescaseBase extends DelayedDeliveryTestcaseBase {
             KeyPair keyPair = ConfigurationFactory.getKeyGenerator().generateKeyPair();
 
             @Override
-            public String getCertProfile() {
-                return "theCertProfileForOnlineEnrollment";
-            }
-
-            @Override
             public EnrollmentContext getEnrollmentContext() {
                 return new EnrollmentContext() {
 

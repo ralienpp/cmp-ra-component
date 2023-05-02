@@ -37,6 +37,7 @@ public class TestSignatureBasedCr extends EnrollmentTestcaseBase {
     @Test
     public void testCr() throws Exception {
         final EnrollmentResult ret = getSignatureBasedCmpClient(
+                        "theCertProfileForOnlineEnrollment",
                         getClientContext(
                                 PKIBody.TYPE_CERT_REQ,
                                 ConfigurationFactory.getKeyGenerator().generateKeyPair()),

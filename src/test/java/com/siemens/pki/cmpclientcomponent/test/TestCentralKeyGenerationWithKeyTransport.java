@@ -74,7 +74,9 @@ public class TestCentralKeyGenerationWithKeyTransport extends EnrollmentTestcase
     @Test
     public void testIrWithKeyTransport() throws Exception {
         final EnrollmentResult ret = getSignatureBasedCmpClient(
-                        getClientContext(PKIBody.TYPE_INIT_REQ, null), UPSTREAM_TRUST_PATH)
+                        "theCertProfileForOnlineEnrollment",
+                        getClientContext(PKIBody.TYPE_INIT_REQ, null),
+                        UPSTREAM_TRUST_PATH)
                 .invokeEnrollment();
         assertNotNull(ret);
         // try to use received certificate and key
@@ -373,7 +375,8 @@ public class TestCentralKeyGenerationWithKeyTransport extends EnrollmentTestcase
         };
     }
 
-    protected CmpClient getSignatureBasedCmpClient(final ClientContext clientContext, final String upstreamTrustPath)
+    protected CmpClient getSignatureBasedCmpClient(
+            String certProfile, final ClientContext clientContext, final String upstreamTrustPath)
             throws InvalidKeyException, NoSuchAlgorithmException, InvalidKeySpecException, CertificateException {
         CmpMessageInterface upstreamconfiguration = new CmpMessageInterface() {
 
@@ -421,6 +424,6 @@ public class TestCentralKeyGenerationWithKeyTransport extends EnrollmentTestcase
                 return deviation < 10;
             }
         };
-        return new CmpClient(getUpstreamExchange(), upstreamconfiguration, clientContext);
+        return new CmpClient(certProfile, getUpstreamExchange(), upstreamconfiguration, clientContext);
     }
 }

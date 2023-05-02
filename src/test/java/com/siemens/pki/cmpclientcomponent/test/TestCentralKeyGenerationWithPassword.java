@@ -153,7 +153,10 @@ public class TestCentralKeyGenerationWithPassword extends EnrollmentTestcaseBase
         SignatureValidationCredentials keyValidationCredentials = new SignatureValidationCredentials(
                 "credentials/CMP_LRA_DOWNSTREAM_Keystore.p12", "Password".toCharArray());
         final EnrollmentResult ret = getPasswordBasedCmpClient(
-                        getClientContext(PKIBody.TYPE_CERT_REQ, null), sharedSecret, keyValidationCredentials)
+                        "theCertProfileForOnlineEnrollment",
+                        getClientContext(PKIBody.TYPE_CERT_REQ, null),
+                        sharedSecret,
+                        keyValidationCredentials)
                 .invokeEnrollment();
         assertNotNull(ret);
         // try to use received certificate and key

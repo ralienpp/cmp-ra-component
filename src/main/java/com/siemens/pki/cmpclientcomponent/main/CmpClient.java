@@ -136,6 +136,10 @@ public class CmpClient
     private final ClientContext clientContext;
 
     /**
+     * @param certProfile           certificate profile to be used for enrollment.
+     *                              <code>null</code> if no certificate profile
+     *                              should be used.
+     *
      * @param upstreamExchange      the {@link UpstreamExchange} interface
      *                              implemented by the wrapping application.
      *
@@ -148,11 +152,12 @@ public class CmpClient
      * @throws InvalidKeyException
      */
     public CmpClient(
+            String certProfile,
             final UpstreamExchange upstreamExchange,
             final CmpMessageInterface upstreamConfiguration,
             final ClientContext clientContext)
             throws InvalidKeyException, NoSuchAlgorithmException, InvalidKeySpecException, CertificateException {
-        requestHandler = new ClientRequestHandler(upstreamExchange, upstreamConfiguration, clientContext);
+        requestHandler = new ClientRequestHandler(certProfile, upstreamExchange, upstreamConfiguration, clientContext);
         this.clientContext = clientContext;
     }
 

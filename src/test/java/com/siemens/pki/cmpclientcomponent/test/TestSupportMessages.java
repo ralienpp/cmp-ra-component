@@ -45,11 +45,6 @@ public class TestSupportMessages extends CmpClientTestcaseBase {
     private static final ClientContext clientContext = new ClientContext() {
 
         @Override
-        public String getCertProfile() {
-            return "TestSupportMessages";
-        }
-
-        @Override
         public EnrollmentContext getEnrollmentContext() {
             fail("getEnrollmentContext");
             return null;
@@ -78,7 +73,7 @@ public class TestSupportMessages extends CmpClientTestcaseBase {
      */
     @Test
     public void testCrlUpdateRetrieval() throws Exception {
-        final List<X509CRL> crls = getSignatureBasedCmpClient(clientContext, UPSTREAM_TRUST_PATH)
+        final List<X509CRL> crls = getSignatureBasedCmpClient("TestSupportMessages", clientContext, UPSTREAM_TRUST_PATH)
                 .getCrls(null, null, new String[] {"CN=distributionPoint"}, new Date());
         assertNotNull("CRL", crls);
     }
@@ -88,8 +83,9 @@ public class TestSupportMessages extends CmpClientTestcaseBase {
      */
     @Test
     public void testGetCaCerts() throws Exception {
-        final List<X509Certificate> certs =
-                getSignatureBasedCmpClient(clientContext, UPSTREAM_TRUST_PATH).getCaCertificates();
+        final List<X509Certificate> certs = getSignatureBasedCmpClient(
+                        "TestSupportMessages", clientContext, UPSTREAM_TRUST_PATH)
+                .getCaCertificates();
         assertEquals("number of returned certificates", 20, certs.size());
     }
 
@@ -98,8 +94,8 @@ public class TestSupportMessages extends CmpClientTestcaseBase {
      */
     @Test
     public void testGetCertificateRequestTemplate() throws Exception {
-        final byte[] template =
-                getSignatureBasedCmpClient(clientContext, UPSTREAM_TRUST_PATH).getCertificateRequestTemplate();
+        final byte[] template = getSignatureBasedCmpClient("TestSupportMessages", clientContext, UPSTREAM_TRUST_PATH)
+                .getCertificateRequestTemplate();
         final CertReqTemplateContent crt = CertReqTemplateContent.getInstance(template);
         assertNotNull("parse CertTemplate", crt.getCertTemplate());
         final AttributeTypeAndValue[] controls =
@@ -115,7 +111,8 @@ public class TestSupportMessages extends CmpClientTestcaseBase {
      */
     @Test
     public void testGetRootCaCertificateUpdate() throws Exception {
-        final RootCaCertificateUpdateResponse update = getSignatureBasedCmpClient(clientContext, UPSTREAM_TRUST_PATH)
+        final RootCaCertificateUpdateResponse update = getSignatureBasedCmpClient(
+                        "TestSupportMessages", clientContext, UPSTREAM_TRUST_PATH)
                 .getRootCaCertificateUpdate(TestCertUtility.loadCertificatesFromFile("credentials/CMP_EE_Root.pem")
                         .get(0));
         assertNotNull(update.getNewWithNew());

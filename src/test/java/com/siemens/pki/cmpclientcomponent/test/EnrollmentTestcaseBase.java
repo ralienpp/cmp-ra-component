@@ -37,11 +37,6 @@ public class EnrollmentTestcaseBase extends CmpClientTestcaseBase {
         final ClientContext clientContext = new ClientContext() {
 
             @Override
-            public String getCertProfile() {
-                return "theCertProfileForOnlineEnrollment";
-            }
-
-            @Override
             public EnrollmentContext getEnrollmentContext() {
                 return new EnrollmentContext() {
 

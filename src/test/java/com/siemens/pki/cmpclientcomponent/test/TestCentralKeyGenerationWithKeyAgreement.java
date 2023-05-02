@@ -456,7 +456,9 @@ public class TestCentralKeyGenerationWithKeyAgreement extends EnrollmentTestcase
     @Test
     public void testCrWithKeyAgreement() throws Exception {
         final EnrollmentResult ret = getSignatureBasedCmpClient(
-                        getClientContext(PKIBody.TYPE_CERT_REQ, null), UPSTREAM_TRUST_PATH)
+                        "theCertProfileForOnlineEnrollment",
+                        getClientContext(PKIBody.TYPE_CERT_REQ, null),
+                        UPSTREAM_TRUST_PATH)
                 .invokeEnrollment();
         assertNotNull(ret);
         // try to use received certificate and key

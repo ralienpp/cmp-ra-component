@@ -59,6 +59,7 @@ public class TestSignaturebasedRr extends EnrollmentTestcaseBase {
     @Test
     public void testRr() throws Exception {
         final CmpClient crClient = getSignatureBasedCmpClient(
+                "theCertProfileForOnlineEnrollment",
                 getClientContext(
                         PKIBody.TYPE_CERT_REQ,
                         ConfigurationFactory.getKeyGenerator().generateKeyPair()),
@@ -91,11 +92,6 @@ public class TestSignaturebasedRr extends EnrollmentTestcaseBase {
                         return crEnrolledCertificate.getIssuerX500Principal().getName();
                     }
                 };
-            }
-
-            @Override
-            public String getCertProfile() {
-                return "certProfileForRr";
             }
         };
 
@@ -149,7 +145,8 @@ public class TestSignaturebasedRr extends EnrollmentTestcaseBase {
                 return deviation < 10;
             }
         };
-        final CmpClient rrClient = new CmpClient(getUpstreamExchange(), rrUpstream, rrClientContext);
+        final CmpClient rrClient =
+                new CmpClient("certProfileForRr", getUpstreamExchange(), rrUpstream, rrClientContext);
         assertTrue(rrClient.invokeRevocation());
     }
 }

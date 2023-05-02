@@ -92,6 +92,10 @@ class ClientRequestHandler {
     private final VerificationContext inputVerification;
 
     /**
+     * @param certProfile           certificate profile to be used for enrollment.
+     *                              <code>null</code> if no certificate profile
+     *                              should be used.
+     *
      * @param upstreamExchange      the {@link UpstreamExchange} interface
      *                              implemented by the wrapping application.
      *
@@ -104,13 +108,14 @@ class ClientRequestHandler {
      * @throws InvalidKeyException
      */
     ClientRequestHandler(
+            String certProfile,
             final UpstreamExchange upstreamExchange,
             final CmpMessageInterface upstreamConfiguration,
             final ClientContext clientContext)
             throws InvalidKeyException, NoSuchAlgorithmException, InvalidKeySpecException, CertificateException {
         this.upstreamExchange = upstreamExchange;
         recipient = ifNotNull(clientContext.getRecipient(), r -> new GeneralName(new X500Name(r)));
-        certProfile = clientContext.getCertProfile();
+        this.certProfile = certProfile;
         outputProtection =
                 ProtectionProviderFactory.createProtectionProvider(upstreamConfiguration.getOutputCredentials());
         inputVerification = upstreamConfiguration.getInputVerification();

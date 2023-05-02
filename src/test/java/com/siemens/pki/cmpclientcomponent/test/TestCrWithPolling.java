@@ -37,7 +37,9 @@ public class TestCrWithPolling extends DelayedEnrollmentTescaseBase {
     @Test
     public void testCr() throws Exception {
         final EnrollmentResult ret = getSignatureBasedCmpClient(
-                        getClientContext(PKIBody.TYPE_CERT_REQ), UPSTREAM_TRUST_PATH)
+                        "theCertProfileForOnlineEnrollment",
+                        getClientContext(PKIBody.TYPE_CERT_REQ),
+                        UPSTREAM_TRUST_PATH)
                 .invokeEnrollment();
         assertNotNull(ret);
     }

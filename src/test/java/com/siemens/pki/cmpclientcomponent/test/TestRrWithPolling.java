@@ -57,8 +57,8 @@ public class TestRrWithPolling extends DelayedEnrollmentTescaseBase {
     @Test
     public void testRrWithPolling() throws Exception {
 
-        final CmpClient crClient =
-                getSignatureBasedCmpClient(getClientContext(PKIBody.TYPE_CERT_REQ), UPSTREAM_TRUST_PATH);
+        final CmpClient crClient = getSignatureBasedCmpClient(
+                "theCertProfileForOnlineEnrollment", getClientContext(PKIBody.TYPE_CERT_REQ), UPSTREAM_TRUST_PATH);
 
         final EnrollmentResult crResult = crClient.invokeEnrollment();
 
@@ -87,11 +87,6 @@ public class TestRrWithPolling extends DelayedEnrollmentTescaseBase {
                         return crEnrolledCertificate.getIssuerX500Principal().getName();
                     }
                 };
-            }
-
-            @Override
-            public String getCertProfile() {
-                return "certProfileForRr";
             }
         };
 
@@ -145,7 +140,8 @@ public class TestRrWithPolling extends DelayedEnrollmentTescaseBase {
                 return deviation < 10;
             }
         };
-        final CmpClient rrClient = new CmpClient(getUpstreamExchange(), rrUpstream, rrClientContext);
+        final CmpClient rrClient =
+                new CmpClient("certProfileForRr", getUpstreamExchange(), rrUpstream, rrClientContext);
         assertTrue(rrClient.invokeRevocation());
     }
 }

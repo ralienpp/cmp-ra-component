@@ -39,6 +39,7 @@ public class TestPasswordBasedIr extends EnrollmentTestcaseBase {
     @Test
     public void testIr() throws Exception {
         final EnrollmentResult ret = getPasswordBasedCmpClient(
+                        "theCertProfileForOnlineEnrollment",
                         getClientContext(
                                 PKIBody.TYPE_CERT_REQ,
                                 ConfigurationFactory.getKeyGenerator().generateKeyPair()),
@@ -57,6 +58,7 @@ public class TestPasswordBasedIr extends EnrollmentTestcaseBase {
     @Test
     public void testPbmac1Ir() throws Exception {
         final EnrollmentResult ret = getPasswordBasedCmpClient(
+                        "theCertProfileForOnlineEnrollment",
                         getClientContext(
                                 PKIBody.TYPE_CERT_REQ,
                                 ConfigurationFactory.getKeyGenerator().generateKeyPair()),

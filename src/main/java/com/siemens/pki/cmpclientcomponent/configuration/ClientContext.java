@@ -22,15 +22,6 @@ package com.siemens.pki.cmpclientcomponent.configuration;
  * generic client configuration
  */
 public interface ClientContext {
-    /**
-     * certificate profile to be used for enrollment
-     *
-     * @return certificate profile or <code>null</code> if no certificate
-     *         profile should be used
-     */
-    default String getCertProfile() {
-        return null;
-    }
 
     /**
      * get enrollment specific configuration

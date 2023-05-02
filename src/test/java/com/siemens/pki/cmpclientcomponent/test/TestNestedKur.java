@@ -586,6 +586,7 @@ public class TestNestedKur extends EnrollmentTestcaseBase {
     @Test
     public void testKur() throws Exception {
         final CmpClient crClient = getSignatureBasedCmpClient(
+                "theCertProfileForOnlineEnrollment",
                 getClientContext(
                         PKIBody.TYPE_CERT_REQ,
                         ConfigurationFactory.getKeyGenerator().generateKeyPair()),
@@ -642,11 +643,6 @@ public class TestNestedKur extends EnrollmentTestcaseBase {
                         return crEnrolledCertificate.getSubjectX500Principal().getName();
                     }
                 };
-            }
-
-            @Override
-            public String getCertProfile() {
-                return "certProfileForKur";
             }
 
             @Override
@@ -708,7 +704,8 @@ public class TestNestedKur extends EnrollmentTestcaseBase {
                 return deviation < 10;
             }
         };
-        final CmpClient kurClient = new CmpClient(getUpstreamExchange(), kurUpstream, kurClientContext);
+        final CmpClient kurClient =
+                new CmpClient("certProfileForKur", getUpstreamExchange(), kurUpstream, kurClientContext);
         final EnrollmentResult kurResult = kurClient.invokeEnrollment();
         assertNotNull(kurResult);
     }

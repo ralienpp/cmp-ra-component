@@ -113,10 +113,14 @@ public class CmpClientTestcaseBase {
 
     protected UpstreamExchange upstreamExchange;
 
-    protected CmpClient getSignatureBasedCmpClient(final ClientContext clientContext, final String upstreamTrustPath)
+    protected CmpClient getSignatureBasedCmpClient(
+            String certProfile, final ClientContext clientContext, final String upstreamTrustPath)
             throws InvalidKeyException, NoSuchAlgorithmException, InvalidKeySpecException, CertificateException {
         return new CmpClient(
-                getUpstreamExchange(), getSignatureBasedUpstreamconfiguration(upstreamTrustPath), clientContext);
+                certProfile,
+                getUpstreamExchange(),
+                getSignatureBasedUpstreamconfiguration(upstreamTrustPath),
+                clientContext);
     }
 
     protected UpstreamExchange getUpstreamExchange() {
@@ -184,11 +188,13 @@ public class CmpClientTestcaseBase {
     }
 
     protected CmpClient getPasswordBasedCmpClient(
+            String certProfile,
             final ClientContext clientContext,
             SharedSecretCredentialContext protection,
             SignatureValidationCredentials keyValidationCredentials)
             throws InvalidKeyException, NoSuchAlgorithmException, InvalidKeySpecException, CertificateException {
         return new CmpClient(
+                certProfile,
                 getUpstreamExchange(),
                 getPasswordBasedUpstreamconfiguration(protection, keyValidationCredentials),
                 clientContext);
