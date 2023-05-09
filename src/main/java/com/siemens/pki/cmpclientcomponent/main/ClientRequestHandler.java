@@ -274,11 +274,13 @@ class ClientRequestHandler {
         for (; ; ) {
             // do polling
             final PKIMessage pollReq = buildFurtherRequest(response, PkiMessageGenerator.generatePollReq());
+            FileTracer.logMessage(pollReq, INTERFACE_NAME);
             rawresponse = upstreamExchange.sendReceiveMessage(pollReq.getEncoded(), certProfile, firstRequestType);
             if (rawresponse == null) {
                 return null;
             }
             response = PKIMessage.getInstance(rawresponse);
+            FileTracer.logMessage(response, INTERFACE_NAME);
             validateResponse(response);
             if (!Objects.equals(requestSenderNonce, recipNonce)
                     && !Objects.equals(pollReq.getHeader().getSenderNonce(), recipNonce)) {
