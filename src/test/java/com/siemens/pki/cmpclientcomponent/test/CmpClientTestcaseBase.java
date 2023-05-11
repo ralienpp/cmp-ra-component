@@ -39,12 +39,9 @@ import com.siemens.pki.cmpracomponent.test.framework.PasswordValidationCredentia
 import com.siemens.pki.cmpracomponent.test.framework.SignatureValidationCredentials;
 import java.io.File;
 import java.io.IOException;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
+import java.security.GeneralSecurityException;
 import java.security.Security;
-import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
-import java.security.spec.InvalidKeySpecException;
 import java.util.Collection;
 import java.util.function.BiFunction;
 import java.util.function.Function;
@@ -115,7 +112,7 @@ public class CmpClientTestcaseBase {
 
     protected CmpClient getSignatureBasedCmpClient(
             String certProfile, final ClientContext clientContext, final String upstreamTrustPath)
-            throws InvalidKeyException, NoSuchAlgorithmException, InvalidKeySpecException, CertificateException {
+            throws GeneralSecurityException {
         return new CmpClient(
                 certProfile,
                 getUpstreamExchange(),
@@ -192,7 +189,7 @@ public class CmpClientTestcaseBase {
             final ClientContext clientContext,
             SharedSecretCredentialContext protection,
             SignatureValidationCredentials keyValidationCredentials)
-            throws InvalidKeyException, NoSuchAlgorithmException, InvalidKeySpecException, CertificateException {
+            throws GeneralSecurityException {
         return new CmpClient(
                 certProfile,
                 getUpstreamExchange(),

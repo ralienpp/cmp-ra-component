@@ -44,11 +44,8 @@ import com.siemens.pki.cmpracomponent.test.framework.TestUtils;
 import com.siemens.pki.cmpracomponent.test.framework.TrustChainAndPrivateKey;
 import com.siemens.pki.cmpracomponent.util.MessageDumper;
 import java.math.BigInteger;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
-import java.security.cert.CertificateException;
+import java.security.GeneralSecurityException;
 import java.security.cert.X509Certificate;
-import java.security.spec.InvalidKeySpecException;
 import org.bouncycastle.asn1.cmp.PKIBody;
 import org.junit.Before;
 import org.junit.Test;
@@ -377,7 +374,7 @@ public class TestCentralKeyGenerationWithKeyTransport extends EnrollmentTestcase
 
     protected CmpClient getSignatureBasedCmpClient(
             String certProfile, final ClientContext clientContext, final String upstreamTrustPath)
-            throws InvalidKeyException, NoSuchAlgorithmException, InvalidKeySpecException, CertificateException {
+            throws GeneralSecurityException {
         CmpMessageInterface upstreamconfiguration = new CmpMessageInterface() {
 
             final SignatureValidationCredentials upstreamTrust =

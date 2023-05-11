@@ -41,15 +41,13 @@ import com.siemens.pki.cmpracomponent.protection.SignatureBasedProtection;
 import com.siemens.pki.cmpracomponent.util.MessageDumper;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.security.InvalidKeyException;
+import java.security.GeneralSecurityException;
 import java.security.KeyPair;
-import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509CRL;
 import java.security.cert.X509Certificate;
-import java.security.spec.InvalidKeySpecException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
@@ -148,16 +146,14 @@ public class CmpClient
      *                              towards the CA
      *
      * @param clientContext         client specific configuration
-     * @throws InvalidKeySpecException
-     * @throws NoSuchAlgorithmException
-     * @throws InvalidKeyException
+     * @throws GeneralSecurityException
      */
     public CmpClient(
             String certProfile,
             final UpstreamExchange upstreamExchange,
             final CmpMessageInterface upstreamConfiguration,
             final ClientContext clientContext)
-            throws InvalidKeyException, NoSuchAlgorithmException, InvalidKeySpecException, CertificateException {
+            throws GeneralSecurityException {
         requestHandler = new ClientRequestHandler(certProfile, upstreamExchange, upstreamConfiguration, clientContext);
         this.clientContext = clientContext;
     }

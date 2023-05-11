@@ -21,6 +21,8 @@ import static com.siemens.pki.cmpracomponent.util.NullUtil.ifNotNull;
 
 import com.siemens.pki.cmpclientcomponent.configuration.ClientContext;
 import com.siemens.pki.cmpracomponent.configuration.CmpMessageInterface;
+import com.siemens.pki.cmpracomponent.configuration.CredentialContext;
+import com.siemens.pki.cmpracomponent.configuration.NestedEndpointContext;
 import com.siemens.pki.cmpracomponent.configuration.VerificationContext;
 import com.siemens.pki.cmpracomponent.cryptoservices.CertUtility;
 import com.siemens.pki.cmpracomponent.main.CmpRaComponent.UpstreamExchange;
@@ -31,14 +33,12 @@ import com.siemens.pki.cmpracomponent.msgvalidation.CmpValidationException;
 import com.siemens.pki.cmpracomponent.msgvalidation.MessageBodyValidator;
 import com.siemens.pki.cmpracomponent.msgvalidation.MessageHeaderValidator;
 import com.siemens.pki.cmpracomponent.msgvalidation.ProtectionValidator;
+import com.siemens.pki.cmpracomponent.msgvalidation.ValidatorIF;
 import com.siemens.pki.cmpracomponent.protection.ProtectionProvider;
 import com.siemens.pki.cmpracomponent.protection.ProtectionProviderFactory;
 import com.siemens.pki.cmpracomponent.util.FileTracer;
 import com.siemens.pki.cmpracomponent.util.MessageDumper;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
-import java.security.cert.CertificateException;
-import java.security.spec.InvalidKeySpecException;
+import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.Objects;
 import org.bouncycastle.asn1.ASN1OctetString;
@@ -54,6 +54,7 @@ import org.bouncycastle.asn1.cmp.PKIBody;
 import org.bouncycastle.asn1.cmp.PKIFailureInfo;
 import org.bouncycastle.asn1.cmp.PKIHeader;
 import org.bouncycastle.asn1.cmp.PKIMessage;
+import org.bouncycastle.asn1.cmp.PKIMessages;
 import org.bouncycastle.asn1.cmp.PKIStatus;
 import org.bouncycastle.asn1.cmp.PollRepContent;
 import org.bouncycastle.asn1.x500.X500Name;
@@ -68,28 +69,94 @@ import org.slf4j.LoggerFactory;
  */
 class ClientRequestHandler {
 
+    class ValidatorAndProtector {
+
+        private final ProtectionProvider outputProtection;
+
+        private final ProtectionValidator protectionValidator;
+
+        private final MessageHeaderValidator headerValidator;
+
+        private final ValidatorIF<String> bodyValidator;
+
+        private final VerificationContext inputVerification;
+
+        public ValidatorAndProtector(NestedEndpointContext nestedEndpoint) throws GeneralSecurityException {
+            this(
+                    NESTED_INTERFACE_NAME,
+                    nestedEndpoint.getInputVerification(),
+                    nestedEndpoint.getOutputCredentials(),
+                    null);
+        }
+
+        private ValidatorAndProtector(String certProfile, final CmpMessageInterface upstreamConfiguration)
+                throws GeneralSecurityException {
+            this(
+                    INTERFACE_NAME,
+                    upstreamConfiguration.getInputVerification(),
+                    upstreamConfiguration.getOutputCredentials(),
+                    upstreamConfiguration);
+        }
+
+        private ValidatorAndProtector(
+                String intefaceName,
+                VerificationContext inputVerification,
+                CredentialContext outputCredentials,
+                CmpMessageInterface upstreamConfiguration)
+                throws GeneralSecurityException {
+            headerValidator = new MessageHeaderValidator(intefaceName);
+            outputProtection = ProtectionProviderFactory.createProtectionProvider(outputCredentials);
+            this.inputVerification = inputVerification;
+            protectionValidator = new ProtectionValidator(intefaceName, inputVerification);
+            if (upstreamConfiguration != null) {
+                bodyValidator =
+                        new MessageBodyValidator(intefaceName, (x, y) -> false, upstreamConfiguration, certProfile);
+            } else {
+                bodyValidator = DUMMY_VALIDATOR;
+            }
+        }
+
+        public VerificationContext getInputVerification() {
+            return inputVerification;
+        }
+
+        public ProtectionProvider getOutputProtection() {
+            return outputProtection;
+        }
+
+        private void validateResponse(final PKIMessage response) throws BaseCmpException {
+            headerValidator.validate(response);
+            protectionValidator.validate(response);
+
+            bodyValidator.validate(response);
+        }
+    }
+
+    private static final ValidatorIF<String> DUMMY_VALIDATOR = new ValidatorIF<String>() {
+        @Override
+        public String validate(PKIMessage messageToValidate) throws BaseCmpException {
+            return null;
+        }
+    };
+
     private static final int DEFAULT_PVNO = PKIHeader.CMP_2000;
 
     private static final String INTERFACE_NAME = "ClientUpstream";
 
+    public static final String NESTED_INTERFACE_NAME = "nested " + INTERFACE_NAME;
+
     /** The usual Logger. */
     private static final Logger LOGGER = LoggerFactory.getLogger(ClientRequestHandler.class);
+
+    private final ValidatorAndProtector validatorAndProtector;
 
     private final UpstreamExchange upstreamExchange;
 
     private final GeneralName recipient;
 
-    private final ProtectionProvider outputProtection;
-
     private final String certProfile;
 
-    final MessageHeaderValidator headerValidator = new MessageHeaderValidator(INTERFACE_NAME);
-
-    private final ProtectionValidator protectionValidator;
-
-    private final MessageBodyValidator bodyValidator;
-
-    private final VerificationContext inputVerification;
+    private final ValidatorAndProtector nestedValidatorAndProtector;
 
     /**
      * @param certProfile           certificate profile to be used for enrollment.
@@ -103,24 +170,20 @@ class ClientRequestHandler {
      *                              towards the CA
      *
      * @param clientContext         client specific configuration
-     * @throws InvalidKeySpecException
-     * @throws NoSuchAlgorithmException
-     * @throws InvalidKeyException
+     * @throws GeneralSecurityException
      */
     ClientRequestHandler(
             String certProfile,
             final UpstreamExchange upstreamExchange,
             final CmpMessageInterface upstreamConfiguration,
             final ClientContext clientContext)
-            throws InvalidKeyException, NoSuchAlgorithmException, InvalidKeySpecException, CertificateException {
+            throws GeneralSecurityException {
         this.upstreamExchange = upstreamExchange;
         recipient = ifNotNull(clientContext.getRecipient(), r -> new GeneralName(new X500Name(r)));
         this.certProfile = certProfile;
-        outputProtection =
-                ProtectionProviderFactory.createProtectionProvider(upstreamConfiguration.getOutputCredentials());
-        inputVerification = upstreamConfiguration.getInputVerification();
-        protectionValidator = new ProtectionValidator(INTERFACE_NAME, inputVerification);
-        bodyValidator = new MessageBodyValidator(INTERFACE_NAME, (x, y) -> false, upstreamConfiguration, certProfile);
+        validatorAndProtector = new ValidatorAndProtector(certProfile, upstreamConfiguration);
+        nestedValidatorAndProtector =
+                ifNotNull(upstreamConfiguration.getNestedEndpointContext(), x -> new ValidatorAndProtector(x));
     }
 
     PKIMessage buildFurtherRequest(final PKIMessage formerResponse, final PKIBody requestBody) throws Exception {
@@ -199,15 +262,16 @@ class ClientRequestHandler {
                 return transactionId;
             }
         };
-        return PkiMessageGenerator.generateAndProtectMessage(headerProvider, outputProtection, body);
+        return PkiMessageGenerator.generateAndProtectMessage(
+                headerProvider, validatorAndProtector.getOutputProtection(), body);
     }
 
-    VerificationContext getInputVerification() {
-        return inputVerification;
+    public VerificationContext getInputVerification() {
+        return validatorAndProtector.getInputVerification();
     }
 
-    ProtectionProvider getOutputProtection() {
-        return outputProtection;
+    public ProtectionProvider getOutputProtection() {
+        return validatorAndProtector.getOutputProtection();
     }
 
     private boolean isWaitingIndication(final PKIBody responseBody) {
@@ -246,9 +310,12 @@ class ClientRequestHandler {
                 .getBody();
     }
 
-    PKIMessage sendReceiveValidateMessage(final PKIMessage request, final int firstRequestType) throws Exception {
-        if (LOGGER.isTraceEnabled()) {
-            LOGGER.trace("client sends:\n" + MessageDumper.dumpPkiMessage(request));
+    PKIMessage sendReceiveValidateMessage(PKIMessage request, final int firstRequestType) throws Exception {
+        if (nestedValidatorAndProtector != null) {
+            request = PkiMessageGenerator.generateAndProtectMessage(
+                    PkiMessageGenerator.buildForwardingHeaderProvider(request),
+                    nestedValidatorAndProtector.getOutputProtection(),
+                    new PKIBody(PKIBody.TYPE_NESTED, new PKIMessages(request)));
         }
         FileTracer.logMessage(request, INTERFACE_NAME);
         byte[] rawresponse = upstreamExchange.sendReceiveMessage(request.getEncoded(), certProfile, firstRequestType);
@@ -260,7 +327,11 @@ class ClientRequestHandler {
         if (LOGGER.isTraceEnabled()) {
             LOGGER.trace("client received:\n" + MessageDumper.dumpPkiMessage(response));
         }
-        validateResponse(response);
+        if (response.getBody().getType() == PKIBody.TYPE_NESTED && nestedValidatorAndProtector != null) {
+            nestedValidatorAndProtector.validateResponse(response);
+            response = PKIMessages.getInstance(response.getBody().getContent()).toPKIMessageArray()[0];
+        }
+        validatorAndProtector.validateResponse(response);
         final ASN1OctetString requestSenderNonce = request.getHeader().getSenderNonce();
         final ASN1OctetString recipNonce = response.getHeader().getRecipNonce();
         if (!Objects.equals(requestSenderNonce, recipNonce)) {
@@ -281,7 +352,7 @@ class ClientRequestHandler {
             }
             response = PKIMessage.getInstance(rawresponse);
             FileTracer.logMessage(response, INTERFACE_NAME);
-            validateResponse(response);
+            validatorAndProtector.validateResponse(response);
             if (!Objects.equals(requestSenderNonce, recipNonce)
                     && !Objects.equals(pollReq.getHeader().getSenderNonce(), recipNonce)) {
                 throw new CmpValidationException(
@@ -296,11 +367,5 @@ class ClientRequestHandler {
                     .intPositiveValueExact();
             Thread.sleep(checkAfterTime * 1000L);
         }
-    }
-
-    private void validateResponse(final PKIMessage response) throws BaseCmpException {
-        headerValidator.validate(response);
-        protectionValidator.validate(response);
-        bodyValidator.validate(response);
     }
 }
