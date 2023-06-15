@@ -26,10 +26,9 @@ public interface NewCMPObjectIdentifiers extends CMPObjectIdentifiers {
      * id-PasswordBasedMac OBJECT IDENTIFIER ::= {1 2 840 113533 7 66 TBD4}
      */
     ASN1ObjectIdentifier kemBasedMac = new ASN1ObjectIdentifier("1.2.840.113533.7.66.99");
-    
+
     /**
      * id-it-KemCiphertextInfo OBJECT IDENTIFIER ::= { id-it TBD1 }
      */
- 
     ASN1ObjectIdentifier kemCiphertextInfo = new ASN1ObjectIdentifier("1.3.6.1.5.5.7.4.99");
 }
