@@ -32,15 +32,27 @@ import org.junit.Test;
 public class TestKem {
 
     @Test
-    public void testKem() throws NoSuchAlgorithmException, InvalidAlgorithmParameterException, NoSuchProviderException {
-        KeyPairGenerator kpg_alice = KeyPairGenerator.getInstance("Kyber", KemHandler.prov);
+    public void testAllKem()
+            throws NoSuchAlgorithmException, InvalidAlgorithmParameterException, NoSuchProviderException {
+        for (String alg : new String[] {"Kyber", "CMCE"}) {
+            System.out.println("alg:" + alg);
+            testOneKem(alg);
+        }
+    }
+
+    public void testOneKem(String kemAlgorithm)
+            throws NoSuchAlgorithmException, InvalidAlgorithmParameterException, NoSuchProviderException {
+        KeyPairGenerator kpg_alice = KeyPairGenerator.getInstance(kemAlgorithm, KemHandler.prov);
         KeyPair keyPair_alice = kpg_alice.generateKeyPair();
+
+        KemHandler kemHandler = new KemHandler(kemAlgorithm);
+
         // encapsulation
-        EncapResult encResult = KemHandler.encapsulate(keyPair_alice.getPublic());
+        EncapResult encResult = kemHandler.encapsulate(keyPair_alice.getPublic());
         byte[] bob_shared = encResult.getSharedSecret();
         byte[] encapsulated = encResult.getEncapsulated();
         // decapsulation
-        byte[] alice_shared = KemHandler.decapsulate(encapsulated, keyPair_alice.getPrivate());
+        byte[] alice_shared = kemHandler.decapsulate(encapsulated, keyPair_alice.getPrivate());
         assertTrue(Arrays.equals(bob_shared, alice_shared));
     }
 }
