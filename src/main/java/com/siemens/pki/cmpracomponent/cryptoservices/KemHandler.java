@@ -18,6 +18,8 @@
 package com.siemens.pki.cmpracomponent.cryptoservices;
 
 import java.security.InvalidAlgorithmParameterException;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.security.PrivateKey;
@@ -33,54 +35,100 @@ import org.bouncycastle.pqc.jcajce.provider.BouncyCastlePQCProvider;
 
 public class KemHandler {
 
-    private static final String symmetricCipher = "AES";
-    private final String kemAlgorithm;
-    public static Provider prov = new BouncyCastlePQCProvider();
-
-    public KemHandler(String kemAlgorithm) {
-        this.kemAlgorithm = kemAlgorithm;
-    }
-
-    {
-        Security.addProvider(prov);
-    }
-
+    /**
+     *
+     * result of an KEM encapsulation
+     *
+     */
     public static class EncapResult {
-        byte[] sharedSecret;
-        byte[] encapsulated;
+        private final byte[] sharedSecret;
+        private final byte[] encapsulated;
 
         /**
          *
-         * @param sharedSecret
-         * @param encapsulated cipher text
+         * @param sharedSecret the shared secret generated during encapsulation
+         * @param encapsulated the cipher text generated during encapsulation
          */
         public EncapResult(byte[] sharedSecret, byte[] encapsulated) {
             this.sharedSecret = sharedSecret;
             this.encapsulated = encapsulated;
         }
 
-        public byte[] getSharedSecret() {
-            return sharedSecret;
-        }
-
+        /**
+         *
+         * @return cipher text
+         */
         public byte[] getEncapsulated() {
             return encapsulated;
         }
+
+        /**
+         *
+         * @return shared secret
+         */
+        public byte[] getSharedSecret() {
+            return sharedSecret;
+        }
     }
 
+    private static final SecureRandom RANDOMGENERATOR = new SecureRandom();
+
+    private static final String SYMMETRIC_CIPHER = "AES";
+
+    private static final Provider BC_PQ_PROV = new BouncyCastlePQCProvider();
+
+    static {
+        Security.addProvider(BC_PQ_PROV);
+    }
+
+    private final String kemAlgorithm;
+    private final KeyPairGenerator kpg;
+
+    public KemHandler(String kemAlgorithm) throws NoSuchAlgorithmException {
+        this.kemAlgorithm = kemAlgorithm;
+        kpg = KeyPairGenerator.getInstance(kemAlgorithm, KemHandler.BC_PQ_PROV);
+    }
+
+    /**
+     * KEM decapsulation
+     *
+     * @param encapsulation cipher text
+     * @param priv          private part of KEM keypair
+     * @return shared secret
+     * @throws InvalidAlgorithmParameterException
+     * @throws NoSuchAlgorithmException
+     */
+    public byte[] decapsulate(byte[] encapsulation, PrivateKey priv)
+            throws InvalidAlgorithmParameterException, NoSuchAlgorithmException {
+        KeyGenerator keyGenReceived = KeyGenerator.getInstance(kemAlgorithm, BC_PQ_PROV);
+        keyGenReceived.init(new KEMExtractSpec(priv, encapsulation, SYMMETRIC_CIPHER));
+        SecretKeyWithEncapsulation decapsulated_secret = (SecretKeyWithEncapsulation) keyGenReceived.generateKey();
+        return decapsulated_secret.getEncoded();
+    }
+
+    /**
+     * KEM encapsulation
+     *
+     * @param pub public part of KEM keypair
+     * @return shared secret and cipher text
+     * @throws InvalidAlgorithmParameterException
+     * @throws NoSuchAlgorithmException
+     * @throws NoSuchProviderException
+     */
     public EncapResult encapsulate(PublicKey pub)
             throws InvalidAlgorithmParameterException, NoSuchAlgorithmException, NoSuchProviderException {
-        KeyGenerator keyGen = KeyGenerator.getInstance(kemAlgorithm, prov);
-        keyGen.init(new KEMGenerateSpec(pub, symmetricCipher), new SecureRandom());
+        KeyGenerator keyGen = KeyGenerator.getInstance(kemAlgorithm, BC_PQ_PROV);
+        keyGen.init(new KEMGenerateSpec(pub, SYMMETRIC_CIPHER), RANDOMGENERATOR);
         SecretKeyWithEncapsulation encapsulation = (SecretKeyWithEncapsulation) keyGen.generateKey();
         return new EncapResult(encapsulation.getEncoded(), encapsulation.getEncapsulation());
     }
 
-    public byte[] decapsulate(byte[] encapsulation, PrivateKey priv)
-            throws InvalidAlgorithmParameterException, NoSuchAlgorithmException {
-        KeyGenerator keyGenReceived = KeyGenerator.getInstance(kemAlgorithm, prov);
-        keyGenReceived.init(new KEMExtractSpec(priv, encapsulation, symmetricCipher));
-        SecretKeyWithEncapsulation decapsulated_secret = (SecretKeyWithEncapsulation) keyGenReceived.generateKey();
-        return decapsulated_secret.getEncoded();
+    /**
+     * generate new KEM keypair
+     *
+     * @return new KEM keypair
+     */
+    public KeyPair generateNewKeypair() {
+        return kpg.generateKeyPair();
     }
 }
