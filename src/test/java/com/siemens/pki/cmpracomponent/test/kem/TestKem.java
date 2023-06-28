@@ -23,7 +23,6 @@ import com.siemens.pki.cmpracomponent.cryptoservices.KemHandler;
 import com.siemens.pki.cmpracomponent.cryptoservices.KemHandler.EncapResult;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.KeyPair;
-import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.util.Arrays;
@@ -42,15 +41,15 @@ public class TestKem {
 
     public void testOneKem(String kemAlgorithm)
             throws NoSuchAlgorithmException, InvalidAlgorithmParameterException, NoSuchProviderException {
-        KeyPairGenerator kpg_alice = KeyPairGenerator.getInstance(kemAlgorithm, KemHandler.prov);
-        KeyPair keyPair_alice = kpg_alice.generateKeyPair();
 
         KemHandler kemHandler = new KemHandler(kemAlgorithm);
+        KeyPair keyPair_alice = kemHandler.generateNewKeypair();
 
         // encapsulation
         EncapResult encResult = kemHandler.encapsulate(keyPair_alice.getPublic());
         byte[] bob_shared = encResult.getSharedSecret();
         byte[] encapsulated = encResult.getEncapsulated();
+
         // decapsulation
         byte[] alice_shared = kemHandler.decapsulate(encapsulated, keyPair_alice.getPrivate());
         assertTrue(Arrays.equals(bob_shared, alice_shared));
