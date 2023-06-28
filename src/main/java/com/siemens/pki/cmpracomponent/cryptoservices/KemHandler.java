@@ -33,7 +33,13 @@ import org.bouncycastle.pqc.jcajce.provider.BouncyCastlePQCProvider;
 
 public class KemHandler {
 
+    private static final String symmetricCipher = "AES";
+    private final String kemAlgorithm;
     public static Provider prov = new BouncyCastlePQCProvider();
+
+    public KemHandler(String kemAlgorithm) {
+        this.kemAlgorithm = kemAlgorithm;
+    }
 
     {
         Security.addProvider(prov);
@@ -62,18 +68,18 @@ public class KemHandler {
         }
     }
 
-    public static EncapResult encapsulate(PublicKey pub)
+    public EncapResult encapsulate(PublicKey pub)
             throws InvalidAlgorithmParameterException, NoSuchAlgorithmException, NoSuchProviderException {
-        KeyGenerator keyGen = KeyGenerator.getInstance("Kyber", prov);
-        keyGen.init(new KEMGenerateSpec(pub, "AES"), new SecureRandom());
+        KeyGenerator keyGen = KeyGenerator.getInstance(kemAlgorithm, prov);
+        keyGen.init(new KEMGenerateSpec(pub, symmetricCipher), new SecureRandom());
         SecretKeyWithEncapsulation encapsulation = (SecretKeyWithEncapsulation) keyGen.generateKey();
         return new EncapResult(encapsulation.getEncoded(), encapsulation.getEncapsulation());
     }
 
-    public static byte[] decapsulate(byte[] encapsulation, PrivateKey priv)
+    public byte[] decapsulate(byte[] encapsulation, PrivateKey priv)
             throws InvalidAlgorithmParameterException, NoSuchAlgorithmException {
-        KeyGenerator keyGenReceived = KeyGenerator.getInstance("Kyber", prov);
-        keyGenReceived.init(new KEMExtractSpec(priv, encapsulation, "AES"));
+        KeyGenerator keyGenReceived = KeyGenerator.getInstance(kemAlgorithm, prov);
+        keyGenReceived.init(new KEMExtractSpec(priv, encapsulation, symmetricCipher));
         SecretKeyWithEncapsulation decapsulated_secret = (SecretKeyWithEncapsulation) keyGenReceived.generateKey();
         return decapsulated_secret.getEncoded();
     }
