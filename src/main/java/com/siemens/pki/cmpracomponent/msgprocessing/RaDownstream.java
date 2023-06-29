@@ -607,7 +607,7 @@ class RaDownstream {
                                 new MessageHeaderValidator(NESTED_STRING + INTERFACE_NAME);
                         headerValidator.validate(in);
                         final ProtectionValidator protectionValidator = new ProtectionValidator(
-                                NESTED_STRING + INTERFACE_NAME, nestedEndpointContext.getInputVerification());
+                                NESTED_STRING + INTERFACE_NAME, nestedEndpointContext.getInputVerification(), null);
                         protectionValidator.validate(in);
                         final PKIMessage[] embeddedMessages = PKIMessages.getInstance(
                                         in.getBody().getContent())

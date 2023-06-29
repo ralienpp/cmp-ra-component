@@ -107,7 +107,7 @@ class ClientRequestHandler {
             headerValidator = new MessageHeaderValidator(intefaceName);
             outputProtection = ProtectionProviderFactory.createProtectionProvider(outputCredentials);
             this.inputVerification = inputVerification;
-            protectionValidator = new ProtectionValidator(intefaceName, inputVerification);
+            protectionValidator = new ProtectionValidator(intefaceName, inputVerification, null);
             if (upstreamConfiguration != null) {
                 bodyValidator =
                         new MessageBodyValidator(intefaceName, (x, y) -> false, upstreamConfiguration, certProfile);
