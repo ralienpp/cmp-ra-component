@@ -17,6 +17,7 @@
  */
 package com.siemens.pki.cmpracomponent.msgvalidation;
 
+import com.siemens.pki.cmpracomponent.cmpextension.NewCMPObjectIdentifiers;
 import com.siemens.pki.cmpracomponent.configuration.VerificationContext;
 import com.siemens.pki.cmpracomponent.persistency.PersistencyContext;
 import com.siemens.pki.cmpracomponent.util.MessageDumper;
@@ -91,6 +92,8 @@ public class ProtectionValidator implements ValidatorIF<Void> {
             new PasswordBasedMacValidator(interfaceName, config).validate(message);
         } else if (PKCSObjectIdentifiers.id_PBMAC1.equals(protectionAlg.getAlgorithm())) {
             new PBMAC1ProtectionValidator(interfaceName, config).validate(message);
+        } else if (NewCMPObjectIdentifiers.kemBasedMac.equals(protectionAlg.getAlgorithm())) {
+            new KEMProtectionValidator(interfaceName, config, persistencyContext).validate(message);
         } else {
             new SignatureProtectionValidator(interfaceName, config).validate(message);
         }

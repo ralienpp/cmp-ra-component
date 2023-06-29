@@ -64,7 +64,7 @@ public class PBMAC1Protection extends MacProtection {
                 new AlgorithmIdentifier(AlgorithmHelper.getOidForMac(config.getMacAlgorithm()));
         final AlgorithmIdentifier protectionAlg = new AlgorithmIdentifier(
                 PKCSObjectIdentifiers.id_PBMAC1, new PBMAC1Params(keyDerivationFunc, messageAuthScheme));
-        final WrappedMac wrappedMac = WrappedMacFactory.createWrappedMac(messageAuthScheme, key.getEncoded());
+        final WrappedMac wrappedMac = WrappedMacFactory.createWrappedMac(messageAuthScheme, key.getEncoded(), null);
         init(protectionAlg, wrappedMac);
     }
 }

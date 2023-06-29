@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2022 Siemens AG
+ *  Copyright (c) 2023 Siemens AG
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may
  *  not use this file except in compliance with the License.
@@ -17,42 +17,50 @@
  */
 package com.siemens.pki.cmpracomponent.msgvalidation;
 
-import com.siemens.pki.cmpracomponent.configuration.VerificationContext;
-import com.siemens.pki.cmpracomponent.cryptoservices.AlgorithmHelper;
-import com.siemens.pki.cmpracomponent.cryptoservices.WrappedMac;
-import com.siemens.pki.cmpracomponent.cryptoservices.WrappedMacFactory;
+import java.security.PrivateKey;
 import java.util.Arrays;
+
 import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
+
 import org.bouncycastle.asn1.ASN1Encoding;
 import org.bouncycastle.asn1.cmp.PKIFailureInfo;
 import org.bouncycastle.asn1.cmp.PKIHeader;
 import org.bouncycastle.asn1.cmp.PKIMessage;
 import org.bouncycastle.asn1.cmp.ProtectedPart;
 import org.bouncycastle.asn1.pkcs.PBKDF2Params;
-import org.bouncycastle.asn1.pkcs.PBMAC1Params;
 import org.bouncycastle.asn1.pkcs.PKCSObjectIdentifiers;
 import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
 
-/**
- * This class validates the PBMAC1 password based protection of all incoming
- * messages and generates proper error responses on failed validation.
- */
-public class PBMAC1ProtectionValidator extends MacValidator {
+import com.siemens.pki.cmpracomponent.cmpextension.KemBMParameter;
+import com.siemens.pki.cmpracomponent.cmpextension.KemCiphertextInfo;
+import com.siemens.pki.cmpracomponent.configuration.VerificationContext;
+import com.siemens.pki.cmpracomponent.cryptoservices.AlgorithmHelper;
+import com.siemens.pki.cmpracomponent.cryptoservices.KemHandler;
+import com.siemens.pki.cmpracomponent.cryptoservices.WrappedMac;
+import com.siemens.pki.cmpracomponent.cryptoservices.WrappedMacFactory;
+import com.siemens.pki.cmpracomponent.persistency.PersistencyContext;
 
-    public PBMAC1ProtectionValidator(final String interfaceName, final VerificationContext config) {
+public class KEMProtectionValidator extends MacValidator {
+
+    private final PersistencyContext persistencyContext;
+
+    public KEMProtectionValidator(
+            String interfaceName, VerificationContext config, PersistencyContext persistencyContext) {
         super(interfaceName, config);
+        this.persistencyContext = persistencyContext;
     }
 
     @Override
     public Void validate(final PKIMessage message) throws BaseCmpException {
         try {
             final PKIHeader header = message.getHeader();
-            final byte[] passwordAsBytes = getSharedSecret(header);
-            final PBMAC1Params pbmac1Params =
-                    PBMAC1Params.getInstance(header.getProtectionAlg().getParameters());
-            final AlgorithmIdentifier keyDerivationFunc = pbmac1Params.getKeyDerivationFunc();
+            final PrivateKey decapKey = config.getPrivateKemKey();
+            final KemCiphertextInfo kemCiphertextInfo = persistencyContext.getDownstreamKemCiphertextInfo();
+            final KemBMParameter kemBmpParameter =
+                    KemBMParameter.getInstance(header.getProtectionAlg().getParameters());
+            final AlgorithmIdentifier keyDerivationFunc = kemBmpParameter.getKdf();
             if (!PKCSObjectIdentifiers.id_PBKDF2.equals(keyDerivationFunc.getAlgorithm())) {
                 throw new CmpValidationException(
                         getInterfaceName(),
@@ -60,22 +68,23 @@ public class PBMAC1ProtectionValidator extends MacValidator {
                         "PBKDF2 protection check failed, unsupported keyDerivationFunc");
             }
             final PBKDF2Params params = PBKDF2Params.getInstance(keyDerivationFunc.getParameters());
+            final byte[] sharedSecret = new KemHandler(
+                            kemCiphertextInfo.getKem().toString())
+                    .decapsulate(kemCiphertextInfo.getCt().getOctets(), decapKey);
             final SecretKeyFactory keyFact = AlgorithmHelper.getSecretKeyFactory(
                     params.getPrf().getAlgorithm().getId());
-
             final SecretKey key = keyFact.generateSecret(new PBEKeySpec(
-                    new String(passwordAsBytes).toCharArray(),
+                    new String(sharedSecret).toCharArray(),
                     params.getSalt(),
                     params.getIterationCount().intValue(),
                     params.getKeyLength().intValue()));
-            final WrappedMac mac =
-                    WrappedMacFactory.createWrappedMac(pbmac1Params.getMessageAuthScheme(), key.getEncoded(), null);
+            final WrappedMac mac = WrappedMacFactory.createWrappedMac(kemBmpParameter.getMac(), key.getEncoded(), persistencyContext.getDownstreamKemOtherInfo().getEncoded());
             final byte[] protectedBytes = new ProtectedPart(header, message.getBody()).getEncoded(ASN1Encoding.DER);
             final byte[] recalculatedProtection = mac.calculateMac(protectedBytes);
             final byte[] protectionBytes = message.getProtection().getBytes();
             if (!Arrays.equals(recalculatedProtection, protectionBytes)) {
                 throw new CmpValidationException(
-                        getInterfaceName(), PKIFailureInfo.badMessageCheck, "PasswordBasedMac protection check failed");
+                        getInterfaceName(), PKIFailureInfo.badMessageCheck, "KEM protection check failed");
             }
         } catch (final BaseCmpException cex) {
             throw cex;
