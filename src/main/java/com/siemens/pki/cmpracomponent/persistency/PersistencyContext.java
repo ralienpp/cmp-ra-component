@@ -18,6 +18,8 @@
 package com.siemens.pki.cmpracomponent.persistency;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.siemens.pki.cmpracomponent.cmpextension.KemCiphertextInfo;
+import com.siemens.pki.cmpracomponent.cmpextension.NewCMPObjectIdentifiers;
 import com.siemens.pki.cmpracomponent.msgvalidation.BaseCmpException;
 import com.siemens.pki.cmpracomponent.msgvalidation.CmpProcessingException;
 import java.io.IOException;
@@ -27,6 +29,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import org.bouncycastle.asn1.cmp.CMPCertificate;
+import org.bouncycastle.asn1.cmp.GenMsgContent;
+import org.bouncycastle.asn1.cmp.InfoTypeAndValue;
+import org.bouncycastle.asn1.cmp.PKIBody;
 import org.bouncycastle.asn1.cmp.PKIFailureInfo;
 import org.bouncycastle.asn1.cmp.PKIMessage;
 
@@ -58,7 +63,10 @@ public class PersistencyContext {
     private PersistencyContextManager contextManager;
 
     private int certificateRequestType;
+
     private boolean delayedDeliveryInProgress;
+
+    private KemCiphertextInfo downstreamKemCiphertextInfo;
 
     public PersistencyContext() {}
 
@@ -208,8 +216,33 @@ public class PersistencyContext {
         this.certificateRequestType = certificateRequestType;
     }
 
-    public void trackMessage(final PKIMessage msg) throws BaseCmpException, IOException {
+    public void trackRequest(final PKIMessage msg) throws BaseCmpException, IOException {
         transactionStateTracker.trackMessage(msg);
+    }
+
+    public void trackResponse(final PKIMessage msg) throws BaseCmpException, IOException {
+        transactionStateTracker.trackMessage(msg);
+    }
+
+    private KemCiphertextInfo updateKemCiphertextInfo(InfoTypeAndValue[] generalInfo, KemCiphertextInfo oldValue) {
+        if (generalInfo != null) {
+            for (InfoTypeAndValue itav : generalInfo) {
+                if (NewCMPObjectIdentifiers.kemCiphertextInfo.equals(itav.getInfoType())) {
+                    return KemCiphertextInfo.getInstance(itav.getInfoValue());
+                }
+            }
+        }
+        return oldValue;
+    }
+
+    public void updateDownstreamKemCiphertextInfo(final PKIMessage msg) {
+        downstreamKemCiphertextInfo =
+                updateKemCiphertextInfo(msg.getHeader().getGeneralInfo(), downstreamKemCiphertextInfo);
+        if (msg.getBody().getType() == PKIBody.TYPE_GEN_MSG) {
+            downstreamKemCiphertextInfo = updateKemCiphertextInfo(
+                    ((GenMsgContent) msg.getBody().getContent()).toInfoTypeAndValueArray(),
+                    downstreamKemCiphertextInfo);
+        }
     }
 
     public void updateTransactionExpirationTime(final Date expirationTime) {

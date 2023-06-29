@@ -391,9 +391,9 @@ class RaDownstream {
                 break;
             default:
         }
-        persistencyContext.trackMessage(preprocessedRequest);
+        persistencyContext.trackRequest(preprocessedRequest);
         final PKIMessage responseFromUpstream = upstreamHandler.handleRequest(preprocessedRequest, persistencyContext);
-        persistencyContext.trackMessage(responseFromUpstream);
+        persistencyContext.trackResponse(responseFromUpstream);
         // response post processing
         switch (responseFromUpstream.getBody().getType()) {
             case PKIBody.TYPE_INIT_REP:

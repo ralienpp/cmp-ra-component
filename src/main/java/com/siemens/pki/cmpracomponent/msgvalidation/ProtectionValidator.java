@@ -18,6 +18,7 @@
 package com.siemens.pki.cmpracomponent.msgvalidation;
 
 import com.siemens.pki.cmpracomponent.configuration.VerificationContext;
+import com.siemens.pki.cmpracomponent.persistency.PersistencyContext;
 import com.siemens.pki.cmpracomponent.util.MessageDumper;
 import org.bouncycastle.asn1.ASN1BitString;
 import org.bouncycastle.asn1.cmp.CMPObjectIdentifiers;
@@ -41,13 +42,18 @@ public class ProtectionValidator implements ValidatorIF<Void> {
 
     private final VerificationContext config;
 
+    private final PersistencyContext persistencyContext;
+
     /**
      * @param interfaceName interface name used in error messages
      * @param config        specific configuration
+     * @param persistencyContext persistency
      */
-    public ProtectionValidator(final String interfaceName, final VerificationContext config) {
+    public ProtectionValidator(
+            final String interfaceName, final VerificationContext config, PersistencyContext persistencyContext) {
         this.interfaceName = interfaceName;
         this.config = config;
+        this.persistencyContext = persistencyContext;
     }
 
     /**
