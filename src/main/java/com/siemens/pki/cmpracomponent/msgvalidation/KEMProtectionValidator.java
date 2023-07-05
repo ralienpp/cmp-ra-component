@@ -17,14 +17,22 @@
  */
 package com.siemens.pki.cmpracomponent.msgvalidation;
 
+import com.siemens.pki.cmpracomponent.cmpextension.KemBMParameter;
+import com.siemens.pki.cmpracomponent.cmpextension.KemCiphertextInfo;
+import com.siemens.pki.cmpracomponent.cmpextension.KemOtherInfo;
+import com.siemens.pki.cmpracomponent.configuration.VerificationContext;
+import com.siemens.pki.cmpracomponent.cryptoservices.AlgorithmHelper;
+import com.siemens.pki.cmpracomponent.cryptoservices.KemHandler;
+import com.siemens.pki.cmpracomponent.cryptoservices.WrappedMac;
+import com.siemens.pki.cmpracomponent.cryptoservices.WrappedMacFactory;
+import com.siemens.pki.cmpracomponent.persistency.PersistencyContext;
 import java.security.PrivateKey;
 import java.util.Arrays;
-
 import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
-
 import org.bouncycastle.asn1.ASN1Encoding;
+import org.bouncycastle.asn1.ASN1Integer;
 import org.bouncycastle.asn1.cmp.PKIFailureInfo;
 import org.bouncycastle.asn1.cmp.PKIHeader;
 import org.bouncycastle.asn1.cmp.PKIMessage;
@@ -32,15 +40,6 @@ import org.bouncycastle.asn1.cmp.ProtectedPart;
 import org.bouncycastle.asn1.pkcs.PBKDF2Params;
 import org.bouncycastle.asn1.pkcs.PKCSObjectIdentifiers;
 import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
-
-import com.siemens.pki.cmpracomponent.cmpextension.KemBMParameter;
-import com.siemens.pki.cmpracomponent.cmpextension.KemCiphertextInfo;
-import com.siemens.pki.cmpracomponent.configuration.VerificationContext;
-import com.siemens.pki.cmpracomponent.cryptoservices.AlgorithmHelper;
-import com.siemens.pki.cmpracomponent.cryptoservices.KemHandler;
-import com.siemens.pki.cmpracomponent.cryptoservices.WrappedMac;
-import com.siemens.pki.cmpracomponent.cryptoservices.WrappedMacFactory;
-import com.siemens.pki.cmpracomponent.persistency.PersistencyContext;
 
 public class KEMProtectionValidator extends MacValidator {
 
@@ -78,7 +77,15 @@ public class KEMProtectionValidator extends MacValidator {
                     params.getSalt(),
                     params.getIterationCount().intValue(),
                     params.getKeyLength().intValue()));
-            final WrappedMac mac = WrappedMacFactory.createWrappedMac(kemBmpParameter.getMac(), key.getEncoded(), persistencyContext.getDownstreamKemOtherInfo().getEncoded());
+            final KemOtherInfo kemOtherInfo = new KemOtherInfo(
+                    persistencyContext.getDownStreamKemTransactionID(),
+                    persistencyContext.getDownStreamKemSenderNonce(),
+                    persistencyContext.getDownStreamKemRecipNonce(),
+                    new ASN1Integer(params.getKeyLength()),
+                    kemBmpParameter.getMac(),
+                    kemCiphertextInfo.getCt());
+            final WrappedMac mac = WrappedMacFactory.createWrappedMac(
+                    kemBmpParameter.getMac(), key.getEncoded(), kemOtherInfo.getEncoded());
             final byte[] protectedBytes = new ProtectedPart(header, message.getBody()).getEncoded(ASN1Encoding.DER);
             final byte[] recalculatedProtection = mac.calculateMac(protectedBytes);
             final byte[] protectionBytes = message.getProtection().getBytes();
