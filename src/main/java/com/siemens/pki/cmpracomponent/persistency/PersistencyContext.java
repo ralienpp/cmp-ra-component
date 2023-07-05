@@ -17,13 +17,18 @@
  */
 package com.siemens.pki.cmpracomponent.persistency;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.siemens.pki.cmpracomponent.cmpextension.KemCiphertextInfo;
+import com.siemens.pki.cmpracomponent.cmpextension.NewCMPObjectIdentifiers;
+import com.siemens.pki.cmpracomponent.msgvalidation.BaseCmpException;
+import com.siemens.pki.cmpracomponent.msgvalidation.CmpProcessingException;
 import java.io.IOException;
 import java.security.PrivateKey;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-
+import org.bouncycastle.asn1.ASN1OctetString;
 import org.bouncycastle.asn1.cmp.CMPCertificate;
 import org.bouncycastle.asn1.cmp.GenMsgContent;
 import org.bouncycastle.asn1.cmp.InfoTypeAndValue;
@@ -32,243 +37,247 @@ import org.bouncycastle.asn1.cmp.PKIFailureInfo;
 import org.bouncycastle.asn1.cmp.PKIHeader;
 import org.bouncycastle.asn1.cmp.PKIMessage;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.siemens.pki.cmpracomponent.cmpextension.KemCiphertextInfo;
-import com.siemens.pki.cmpracomponent.cmpextension.KemOtherInfo;
-import com.siemens.pki.cmpracomponent.cmpextension.NewCMPObjectIdentifiers;
-import com.siemens.pki.cmpracomponent.msgvalidation.BaseCmpException;
-import com.siemens.pki.cmpracomponent.msgvalidation.CmpProcessingException;
-
 /**
  * holder for all persistent data
  */
 public class PersistencyContext {
 
-	@JsonIgnore
-	private final TransactionStateTracker transactionStateTracker = new TransactionStateTracker(this);
+    @JsonIgnore
+    private final TransactionStateTracker transactionStateTracker = new TransactionStateTracker(this);
 
-	private Date expirationTime;
-	private byte[] transactionId;
-	private String certProfile;
-	private PrivateKey newGeneratedPrivateKey;
-	private Set<CMPCertificate> alreadySentExtraCerts;
-	private PKIMessage initialRequest;
-	private PKIMessage pendingDelayedResponse;
-	private LastTransactionState lastTransactionState;
-	private byte[] lastSenderNonce;
-	private byte[] digestToConfirm;
-	private boolean implicitConfirmGranted;
-	private byte[] requestedPublicKey;
+    private Date expirationTime;
+    private byte[] transactionId;
+    private String certProfile;
+    private PrivateKey newGeneratedPrivateKey;
+    private Set<CMPCertificate> alreadySentExtraCerts;
+    private PKIMessage initialRequest;
+    private PKIMessage pendingDelayedResponse;
+    private LastTransactionState lastTransactionState;
+    private byte[] lastSenderNonce;
+    private byte[] digestToConfirm;
+    private boolean implicitConfirmGranted;
+    private byte[] requestedPublicKey;
 
-	@JsonIgnore
-	private List<CMPCertificate> issuingChain;
+    @JsonIgnore
+    private List<CMPCertificate> issuingChain;
 
-	@JsonIgnore
-	private PersistencyContextManager contextManager;
+    @JsonIgnore
+    private PersistencyContextManager contextManager;
 
-	private int certificateRequestType;
+    private int certificateRequestType;
 
-	private boolean delayedDeliveryInProgress;
+    private boolean delayedDeliveryInProgress;
 
-	private KemCiphertextInfo downstreamKemCiphertextInfo;
+    private KemCiphertextInfo downstreamKemCiphertextInfo;
 
-	private KemOtherInfo downstreamKemOtherInfo;
+    private ASN1OctetString downStreamKemTransactionID;
 
-	public PersistencyContext() {
-	}
+    private ASN1OctetString downStreamKemSenderNonce;
 
-	PersistencyContext(final PersistencyContextManager contextManager, final byte[] transactionId) {
-		this.transactionId = transactionId;
-		this.contextManager = contextManager;
-		lastTransactionState = LastTransactionState.INITIAL_STATE;
-		this.certificateRequestType = -1;
-	}
+    private ASN1OctetString downStreamKemRecipNonce;
 
-	public void flush() throws IOException {
-		if (transactionStateTracker.isTransactionTerminated()) {
-			contextManager.clearPersistencyContext(transactionId);
-		} else {
-			contextManager.flushPersistencyContext(this);
-		}
-	}
+    public PersistencyContext() {}
 
-	public Set<CMPCertificate> getAlreadySentExtraCerts() {
-		if (alreadySentExtraCerts == null) {
-			alreadySentExtraCerts = new HashSet<>();
-		}
-		return alreadySentExtraCerts;
-	}
+    PersistencyContext(final PersistencyContextManager contextManager, final byte[] transactionId) {
+        this.transactionId = transactionId;
+        this.contextManager = contextManager;
+        lastTransactionState = LastTransactionState.INITIAL_STATE;
+        this.certificateRequestType = -1;
+    }
 
-	public String getCertProfile() {
-		return certProfile;
-	}
+    public void flush() throws IOException {
+        if (transactionStateTracker.isTransactionTerminated()) {
+            contextManager.clearPersistencyContext(transactionId);
+        } else {
+            contextManager.flushPersistencyContext(this);
+        }
+    }
 
-	public boolean getDelayedDeliveryInProgress() {
-		return delayedDeliveryInProgress;
-	}
+    public Set<CMPCertificate> getAlreadySentExtraCerts() {
+        if (alreadySentExtraCerts == null) {
+            alreadySentExtraCerts = new HashSet<>();
+        }
+        return alreadySentExtraCerts;
+    }
 
-	public byte[] getDigestToConfirm() {
-		return digestToConfirm;
-	}
+    public String getCertProfile() {
+        return certProfile;
+    }
 
-	public KemCiphertextInfo getDownstreamKemCiphertextInfo() {
-		return downstreamKemCiphertextInfo;
-	}
+    public boolean getDelayedDeliveryInProgress() {
+        return delayedDeliveryInProgress;
+    }
 
-	public KemOtherInfo getDownstreamKemOtherInfo() {
-		return downstreamKemOtherInfo;
-	}
+    public byte[] getDigestToConfirm() {
+        return digestToConfirm;
+    }
 
-	public Date getExpirationTime() {
-		return expirationTime;
-	}
+    public KemCiphertextInfo getDownstreamKemCiphertextInfo() {
+        return downstreamKemCiphertextInfo;
+    }
 
-	public PKIMessage getInitialRequest() {
-		return initialRequest;
-	}
+    public ASN1OctetString getDownStreamKemRecipNonce() {
+        return downStreamKemRecipNonce;
+    }
 
-	public List<CMPCertificate> getIssuingChain() {
-		return issuingChain;
-	}
+    public ASN1OctetString getDownStreamKemSenderNonce() {
+        return downStreamKemSenderNonce;
+    }
 
-	public byte[] getLastSenderNonce() {
-		return lastSenderNonce;
-	}
+    public ASN1OctetString getDownStreamKemTransactionID() {
+        return downStreamKemTransactionID;
+    }
 
-	public LastTransactionState getLastTransactionState() {
-		return lastTransactionState;
-	}
+    public Date getExpirationTime() {
+        return expirationTime;
+    }
 
-	public PrivateKey getNewGeneratedPrivateKey() {
-		return newGeneratedPrivateKey;
-	}
+    public PKIMessage getInitialRequest() {
+        return initialRequest;
+    }
 
-	public PKIMessage getPendingDelayedResponse() {
-		return pendingDelayedResponse;
-	}
+    public List<CMPCertificate> getIssuingChain() {
+        return issuingChain;
+    }
 
-	public byte[] getRequestedPublicKey() {
-		return requestedPublicKey;
-	}
+    public byte[] getLastSenderNonce() {
+        return lastSenderNonce;
+    }
 
-	public int getRequestType() {
-		return certificateRequestType;
-	}
+    public LastTransactionState getLastTransactionState() {
+        return lastTransactionState;
+    }
 
-	public byte[] getTransactionId() {
-		return transactionId;
-	}
+    public PrivateKey getNewGeneratedPrivateKey() {
+        return newGeneratedPrivateKey;
+    }
 
-	public boolean isImplicitConfirmGranted() {
-		return implicitConfirmGranted;
-	}
+    public PKIMessage getPendingDelayedResponse() {
+        return pendingDelayedResponse;
+    }
 
-	public void setAlreadySentExtraCerts(final Set<CMPCertificate> alreadySentExtraCerts) {
-		this.alreadySentExtraCerts = alreadySentExtraCerts;
-	}
+    public byte[] getRequestedPublicKey() {
+        return requestedPublicKey;
+    }
 
-	public void setCertProfile(final String certProfile) {
-		if (certProfile != null) {
-			this.certProfile = certProfile;
-		}
-	}
+    public int getRequestType() {
+        return certificateRequestType;
+    }
 
-	public void setContextManager(final PersistencyContextManager contextManager) {
-		this.contextManager = contextManager;
-	}
+    public byte[] getTransactionId() {
+        return transactionId;
+    }
 
-	public void setDelayedDeliveryInProgress(final boolean delayedDeliveryInProgress) {
-		this.delayedDeliveryInProgress = delayedDeliveryInProgress;
-	}
+    public boolean isImplicitConfirmGranted() {
+        return implicitConfirmGranted;
+    }
 
-	public void setDigestToConfirm(final byte[] digestToConfirm) {
-		this.digestToConfirm = digestToConfirm;
-	}
+    public void setAlreadySentExtraCerts(final Set<CMPCertificate> alreadySentExtraCerts) {
+        this.alreadySentExtraCerts = alreadySentExtraCerts;
+    }
 
-	public void setExpirationTime(final Date expirationTime) {
-		this.expirationTime = expirationTime;
-	}
+    public void setCertProfile(final String certProfile) {
+        if (certProfile != null) {
+            this.certProfile = certProfile;
+        }
+    }
 
-	public void setImplicitConfirmGranted(final boolean implicitConfirmGranted) {
-		this.implicitConfirmGranted = implicitConfirmGranted;
-	}
+    public void setContextManager(final PersistencyContextManager contextManager) {
+        this.contextManager = contextManager;
+    }
 
-	public void setInitialRequest(final PKIMessage initialRequest) {
-		this.initialRequest = initialRequest;
-	}
+    public void setDelayedDeliveryInProgress(final boolean delayedDeliveryInProgress) {
+        this.delayedDeliveryInProgress = delayedDeliveryInProgress;
+    }
 
-	public void setIssuingChain(final List<CMPCertificate> issuingChain) {
-		this.issuingChain = issuingChain;
-	}
+    public void setDigestToConfirm(final byte[] digestToConfirm) {
+        this.digestToConfirm = digestToConfirm;
+    }
 
-	public void setLastSenderNonce(final byte[] lastSenderNonce) {
-		this.lastSenderNonce = lastSenderNonce;
-	}
+    public void setExpirationTime(final Date expirationTime) {
+        this.expirationTime = expirationTime;
+    }
 
-	public void setLastTransactionState(final LastTransactionState lastTransactionState) {
-		this.lastTransactionState = lastTransactionState;
-	}
+    public void setImplicitConfirmGranted(final boolean implicitConfirmGranted) {
+        this.implicitConfirmGranted = implicitConfirmGranted;
+    }
 
-	public void setNewGeneratedPrivateKey(final PrivateKey newGeneratedPrivateKey) {
-		this.newGeneratedPrivateKey = newGeneratedPrivateKey;
-	}
+    public void setInitialRequest(final PKIMessage initialRequest) {
+        this.initialRequest = initialRequest;
+    }
 
-	public void setPendingDelayedResponse(final PKIMessage delayedResponse) throws CmpProcessingException {
-		if (this.pendingDelayedResponse != null) {
-			throw new CmpProcessingException("upstream persistency", PKIFailureInfo.transactionIdInUse,
-					"duplicate response for same transactionID");
-		}
-		this.pendingDelayedResponse = delayedResponse;
-	}
+    public void setIssuingChain(final List<CMPCertificate> issuingChain) {
+        this.issuingChain = issuingChain;
+    }
 
-	public void setRequestedPublicKey(final byte[] requestedPublicKey) {
-		this.requestedPublicKey = requestedPublicKey;
-	}
+    public void setLastSenderNonce(final byte[] lastSenderNonce) {
+        this.lastSenderNonce = lastSenderNonce;
+    }
 
-	public void setRequestType(final int certificateRequestType) {
-		this.certificateRequestType = certificateRequestType;
-	}
+    public void setLastTransactionState(final LastTransactionState lastTransactionState) {
+        this.lastTransactionState = lastTransactionState;
+    }
 
-	public void trackRequest(final PKIMessage msg) throws BaseCmpException, IOException {
-		transactionStateTracker.trackMessage(msg);
-	}
+    public void setNewGeneratedPrivateKey(final PrivateKey newGeneratedPrivateKey) {
+        this.newGeneratedPrivateKey = newGeneratedPrivateKey;
+    }
 
-	public void trackResponse(final PKIMessage msg) throws BaseCmpException, IOException {
-		transactionStateTracker.trackMessage(msg);
-	}
+    public void setPendingDelayedResponse(final PKIMessage delayedResponse) throws CmpProcessingException {
+        if (this.pendingDelayedResponse != null) {
+            throw new CmpProcessingException(
+                    "upstream persistency",
+                    PKIFailureInfo.transactionIdInUse,
+                    "duplicate response for same transactionID");
+        }
+        this.pendingDelayedResponse = delayedResponse;
+    }
 
-	public void updateDownstreamKemCiphertextInfo(final PKIMessage msg) {
-		final PKIHeader header = msg.getHeader();
-		if (updateKemCiphertextInfo(header.getGeneralInfo())) {
-			downstreamKemOtherInfo = new KemOtherInfo(header.getTransactionID(), header.getSenderNonce(),
-					header.getRecipNonce(),
-					// TODO
-					null /* TODO */ , null, downstreamKemCiphertextInfo.getCt());
-		}
-		if (msg.getBody().getType() == PKIBody.TYPE_GEN_MSG || msg.getBody().getType() == PKIBody.TYPE_GEN_REP) {
-			if (updateKemCiphertextInfo(((GenMsgContent) msg.getBody().getContent()).toInfoTypeAndValueArray())) {
-				downstreamKemOtherInfo = new KemOtherInfo(header.getTransactionID(), header.getSenderNonce(),
-						header.getRecipNonce(),
-						// TODO
-						null /* TODO */ , null, downstreamKemCiphertextInfo.getCt());
-			}
-		}
-	}
+    public void setRequestedPublicKey(final byte[] requestedPublicKey) {
+        this.requestedPublicKey = requestedPublicKey;
+    }
 
-	private boolean updateKemCiphertextInfo(InfoTypeAndValue[] generalInfo) {
-		if (generalInfo != null) {
-			for (final InfoTypeAndValue itav : generalInfo) {
-				if (NewCMPObjectIdentifiers.kemCiphertextInfo.equals(itav.getInfoType())) {
-					downstreamKemCiphertextInfo = KemCiphertextInfo.getInstance(itav.getInfoValue());
-					return true;
-				}
-			}
-		}
-		return false;
-	}
+    public void setRequestType(final int certificateRequestType) {
+        this.certificateRequestType = certificateRequestType;
+    }
 
-	public void updateTransactionExpirationTime(final Date expirationTime) {
-		// only downstream can expire
-		this.expirationTime = expirationTime;
-	}
+    public void trackRequest(final PKIMessage msg) throws BaseCmpException, IOException {
+        transactionStateTracker.trackMessage(msg);
+    }
+
+    public void trackResponse(final PKIMessage msg) throws BaseCmpException, IOException {
+        transactionStateTracker.trackMessage(msg);
+    }
+
+    public void updateDownstreamKemCiphertextInfo(final PKIMessage msg) {
+        final PKIHeader header = msg.getHeader();
+        if (updateKemCiphertextInfo(header.getGeneralInfo())) {
+            downStreamKemTransactionID = header.getTransactionID();
+            downStreamKemSenderNonce = header.getSenderNonce();
+            downStreamKemRecipNonce = header.getRecipNonce();
+        }
+        if (msg.getBody().getType() == PKIBody.TYPE_GEN_MSG || msg.getBody().getType() == PKIBody.TYPE_GEN_REP) {
+            if (updateKemCiphertextInfo(((GenMsgContent) msg.getBody().getContent()).toInfoTypeAndValueArray())) {
+                downStreamKemTransactionID = header.getTransactionID();
+                downStreamKemSenderNonce = header.getSenderNonce();
+                downStreamKemRecipNonce = header.getRecipNonce();
+            }
+        }
+    }
+
+    private boolean updateKemCiphertextInfo(InfoTypeAndValue[] generalInfo) {
+        if (generalInfo != null) {
+            for (final InfoTypeAndValue itav : generalInfo) {
+                if (NewCMPObjectIdentifiers.kemCiphertextInfo.equals(itav.getInfoType())) {
+                    downstreamKemCiphertextInfo = KemCiphertextInfo.getInstance(itav.getInfoValue());
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public void updateTransactionExpirationTime(final Date expirationTime) {
+        // only downstream can expire
+        this.expirationTime = expirationTime;
+    }
 }

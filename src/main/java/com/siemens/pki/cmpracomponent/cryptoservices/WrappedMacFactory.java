@@ -17,19 +17,16 @@
  */
 package com.siemens.pki.cmpracomponent.cryptoservices;
 
+import com.siemens.pki.cmpracomponent.util.NullUtil;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
-
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
-
 import org.bouncycastle.asn1.ASN1ObjectIdentifier;
 import org.bouncycastle.asn1.nist.NISTObjectIdentifiers;
 import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
 import org.bouncycastle.crypto.macs.KMAC;
 import org.bouncycastle.crypto.params.KeyParameter;
-
-import com.siemens.pki.cmpracomponent.util.NullUtil;
 
 /**
  * factory for {@link WrappedMac}
