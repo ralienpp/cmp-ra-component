@@ -44,6 +44,7 @@ public class KemBMParameter extends ASN1Object {
 
         return null;
     }
+
     private final AlgorithmIdentifier kdf;
     private final ASN1Integer len;
 
@@ -89,7 +90,7 @@ public class KemBMParameter extends ASN1Object {
      * @return a basic ASN.1 object representation.
      */
     @Override
-	public ASN1Primitive toASN1Primitive() {
+    public ASN1Primitive toASN1Primitive() {
         final ASN1EncodableVector v = new ASN1EncodableVector(3);
 
         v.add(kdf);
