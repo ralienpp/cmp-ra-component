@@ -69,7 +69,7 @@ public class PBMAC1ProtectionValidator extends MacValidator {
                     params.getIterationCount().intValue(),
                     params.getKeyLength().intValue()));
             final WrappedMac mac =
-                    WrappedMacFactory.createWrappedMac(pbmac1Params.getMessageAuthScheme(), key.getEncoded(), null);
+                    WrappedMacFactory.createWrappedMac(pbmac1Params.getMessageAuthScheme(), key.getEncoded());
             final byte[] protectedBytes = new ProtectedPart(header, message.getBody()).getEncoded(ASN1Encoding.DER);
             final byte[] recalculatedProtection = mac.calculateMac(protectedBytes);
             final byte[] protectionBytes = message.getProtection().getBytes();

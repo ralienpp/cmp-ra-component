@@ -17,11 +17,12 @@
  */
 package com.siemens.pki.cmpracomponent.cryptoservices;
 
-import com.siemens.pki.cmpracomponent.util.NullUtil;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
+
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
+
 import org.bouncycastle.asn1.ASN1ObjectIdentifier;
 import org.bouncycastle.asn1.nist.NISTObjectIdentifiers;
 import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
@@ -34,11 +35,11 @@ import org.bouncycastle.crypto.params.KeyParameter;
 public class WrappedMacFactory {
     private static final byte[] EMPTY_STRING = {};
 
-    public static WrappedMac createWrappedMac(final AlgorithmIdentifier macid, final byte[] key, byte[] context)
+    public static WrappedMac createWrappedMac(final AlgorithmIdentifier macid, final byte[] key)
             throws NoSuchAlgorithmException, InvalidKeyException {
         final ASN1ObjectIdentifier algorithm = macid.getAlgorithm();
         if (NISTObjectIdentifiers.id_KmacWithSHAKE128.equals(algorithm)) {
-            final KMAC mac = new KMAC(128, NullUtil.defaultIfNull(context, EMPTY_STRING));
+            final KMAC mac = new KMAC(128,  EMPTY_STRING);
             mac.init(new KeyParameter(key));
             return in -> {
                 final byte[] out = new byte[128];
@@ -49,7 +50,7 @@ public class WrappedMacFactory {
             };
         }
         if (NISTObjectIdentifiers.id_KmacWithSHAKE256.equals(algorithm)) {
-            final KMAC mac = new KMAC(256, NullUtil.defaultIfNull(context, EMPTY_STRING));
+            final KMAC mac = new KMAC(256, EMPTY_STRING);
             mac.init(new KeyParameter(key));
             return in -> {
                 final byte[] out = new byte[256];

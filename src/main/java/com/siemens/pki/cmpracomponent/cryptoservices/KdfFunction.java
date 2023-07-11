@@ -15,20 +15,24 @@
  *
  *  SPDX-License-Identifier: Apache-2.0
  */
-package com.siemens.pki.cmpracomponent.cmpextension;
+package com.siemens.pki.cmpracomponent.cryptoservices;
 
-import org.bouncycastle.asn1.ASN1ObjectIdentifier;
-import org.bouncycastle.asn1.cmp.CMPObjectIdentifiers;
+import java.math.BigInteger;
 
-public interface NewCMPObjectIdentifiers extends CMPObjectIdentifiers {
+import javax.crypto.SecretKey;
 
-    /**
-     * id-PasswordBasedMac OBJECT IDENTIFIER ::= {1 2 840 113533 7 66 TBD4}
-     */
-    ASN1ObjectIdentifier kemBasedMac = new ASN1ObjectIdentifier("1.2.840.113533.7.66.16");
+import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
 
-    /**
-     * id-it-KemCiphertextInfo OBJECT IDENTIFIER ::= { id-it TBD1 }
-     */
-    ASN1ObjectIdentifier kemCiphertextInfo = new ASN1ObjectIdentifier("1.3.6.1.5.5.7.4.99");
+public class KdfFunction {
+
+	public static KdfFunction getKdfInstance(AlgorithmIdentifier keyDerivationFunc) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	public SecretKey deriveKey(byte[] sharedSecret, BigInteger keyLength, byte[] encoded) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
 }
