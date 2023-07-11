@@ -20,19 +20,19 @@ package com.siemens.pki.cmpracomponent.cryptoservices;
 import java.math.BigInteger;
 
 import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
 
 import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
 
 public class KdfFunction {
 
-	public static KdfFunction getKdfInstance(AlgorithmIdentifier keyDerivationFunc) {
-		// TODO Auto-generated method stub
-		return null;
-	}
+    public static KdfFunction getKdfInstance(AlgorithmIdentifier keyDerivationFunc) {
+        // TODO replace dummy implementation
+        return new KdfFunction();
+    }
 
-	public SecretKey deriveKey(byte[] sharedSecret, BigInteger keyLength, byte[] encoded) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
+    public SecretKey deriveKey(byte[] sharedSecret, BigInteger keyLength, byte[] context) {
+        // TODO replace dummy implementation
+        return new SecretKeySpec("A dummy key".getBytes(), "HKDF");
+    }
 }
