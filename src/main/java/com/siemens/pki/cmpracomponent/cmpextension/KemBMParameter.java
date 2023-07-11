@@ -28,20 +28,26 @@ import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
 /**
  *  KemBMParameter ::= SEQUENCE {
  *      kdf              AlgorithmIdentifier{KEY-DERIVATION, {...}},
- *      len              INTEGER (1..MAX),
+ *      len              INTEGER (1..MAX), -- output length of the KDF
  *      mac              AlgorithmIdentifier{MAC-ALGORITHM, {...}}
  *   }
  */
 public class KemBMParameter extends ASN1Object {
+    public static KemBMParameter getInstance(Object o) {
+        if (o instanceof KemBMParameter) {
+            return (KemBMParameter) o;
+        }
+
+        if (o != null) {
+            return new KemBMParameter(ASN1Sequence.getInstance(o));
+        }
+
+        return null;
+    }
     private final AlgorithmIdentifier kdf;
     private final ASN1Integer len;
-    private final AlgorithmIdentifier mac;
 
-    private KemBMParameter(ASN1Sequence seq) {
-        kdf = AlgorithmIdentifier.getInstance(seq.getObjectAt(0));
-        len = ASN1Integer.getInstance(seq.getObjectAt(1));
-        mac = AlgorithmIdentifier.getInstance(seq.getObjectAt(2));
-    }
+    private final AlgorithmIdentifier mac;
 
     public KemBMParameter(AlgorithmIdentifier kdf, ASN1Integer len, AlgorithmIdentifier mac) {
         this.kdf = kdf;
@@ -53,16 +59,10 @@ public class KemBMParameter extends ASN1Object {
         this(kdf, new ASN1Integer(len), mac);
     }
 
-    public static KemBMParameter getInstance(Object o) {
-        if (o instanceof KemBMParameter) {
-            return (KemBMParameter) o;
-        }
-
-        if (o != null) {
-            return new KemBMParameter(ASN1Sequence.getInstance(o));
-        }
-
-        return null;
+    private KemBMParameter(ASN1Sequence seq) {
+        kdf = AlgorithmIdentifier.getInstance(seq.getObjectAt(0));
+        len = ASN1Integer.getInstance(seq.getObjectAt(1));
+        mac = AlgorithmIdentifier.getInstance(seq.getObjectAt(2));
     }
 
     public AlgorithmIdentifier getKdf() {
@@ -88,8 +88,9 @@ public class KemBMParameter extends ASN1Object {
      *
      * @return a basic ASN.1 object representation.
      */
-    public ASN1Primitive toASN1Primitive() {
-        ASN1EncodableVector v = new ASN1EncodableVector(3);
+    @Override
+	public ASN1Primitive toASN1Primitive() {
+        final ASN1EncodableVector v = new ASN1EncodableVector(3);
 
         v.add(kdf);
         v.add(len);
