@@ -18,8 +18,11 @@
 package com.siemens.pki.cmpracomponent.protection;
 
 import com.siemens.pki.cmpracomponent.configuration.CredentialContext;
+import com.siemens.pki.cmpracomponent.configuration.KEMCredentialContext;
 import com.siemens.pki.cmpracomponent.configuration.SharedSecretCredentialContext;
 import com.siemens.pki.cmpracomponent.configuration.SignatureCredentialContext;
+import com.siemens.pki.cmpracomponent.persistency.PersistencyContext;
+import com.siemens.pki.cmpracomponent.persistency.PersistencyContext.InterfaceKontext;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
@@ -29,19 +32,18 @@ import java.security.spec.InvalidKeySpecException;
  */
 public class ProtectionProviderFactory {
 
-    // utility class
-    private ProtectionProviderFactory() {}
-
     /**
      * create a {@link ProtectionProvider} according to the given configuration
      *
      * @param config specific configuration
+     * @param persistencyContext
      * @return a new {@link ProtectionProvider}
      * @throws NoSuchAlgorithmException in case of unknown algorithm
      * @throws InvalidKeyException      in case of internal error
      * @throws InvalidKeySpecException  in case of internal error
      */
-    public static ProtectionProvider createProtectionProvider(final CredentialContext config)
+    public static ProtectionProvider createProtectionProvider(
+            final CredentialContext config, PersistencyContext persistencyContext, InterfaceKontext interfaceKontext)
             throws InvalidKeyException, NoSuchAlgorithmException, InvalidKeySpecException {
         if (config instanceof SharedSecretCredentialContext) {
             final SharedSecretCredentialContext ssConfig = (SharedSecretCredentialContext) config;
@@ -62,6 +64,12 @@ public class ProtectionProviderFactory {
         if (config instanceof SignatureCredentialContext) {
             return new SignatureBasedProtection((SignatureCredentialContext) config);
         }
+        if (config instanceof KEMCredentialContext) {
+            return new KEMProtection((KEMCredentialContext) config, persistencyContext, interfaceKontext);
+        }
         return ProtectionProvider.NO_PROTECTION;
     }
+
+    // utility class
+    private ProtectionProviderFactory() {}
 }

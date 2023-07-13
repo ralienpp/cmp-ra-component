@@ -155,7 +155,8 @@ class CmpRaUpstream implements RaUpstream {
                         config.getUpstreamConfiguration(
                                 certProfile, in.getBody().getType()),
                         INTERFACE_NAME,
-                        pesistencyContext);
+                        pesistencyContext,
+                        PersistencyContext.InterfaceKontext.upstream_send);
                 sentMessage = outputProtector.protectAndForwardMessage(in, null);
             }
             final NestedEndpointContext nestedEndpointContext = config.getUpstreamConfiguration(
@@ -164,8 +165,8 @@ class CmpRaUpstream implements RaUpstream {
             if (nestedEndpointContext != null) {
                 // wrap into nested message
                 final CredentialContext nestedOutputCredentials = nestedEndpointContext.getOutputCredentials();
-                final ProtectionProvider nestedProtector =
-                        ProtectionProviderFactory.createProtectionProvider(nestedOutputCredentials);
+                final ProtectionProvider nestedProtector = ProtectionProviderFactory.createProtectionProvider(
+                        nestedOutputCredentials, pesistencyContext, PersistencyContext.InterfaceKontext.upstream_send);
                 sentMessage = PkiMessageGenerator.generateAndProtectMessage(
                         PkiMessageGenerator.buildForwardingHeaderProvider(sentMessage),
                         nestedProtector,

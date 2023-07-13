@@ -179,7 +179,8 @@ class RaDownstream {
                 config.getDownstreamConfiguration(
                         ifNotNull(persistencyContext, PersistencyContext::getCertProfile), bodyType),
                 INTERFACE_NAME,
-                persistencyContext);
+                persistencyContext,
+                PersistencyContext.InterfaceKontext.downstream_send);
     }
 
     /**

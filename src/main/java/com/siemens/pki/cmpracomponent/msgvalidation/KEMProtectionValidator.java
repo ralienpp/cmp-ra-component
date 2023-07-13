@@ -18,11 +18,9 @@
 package com.siemens.pki.cmpracomponent.msgvalidation;
 
 import com.siemens.pki.cmpracomponent.cmpextension.KemBMParameter;
-import com.siemens.pki.cmpracomponent.cmpextension.KemCiphertextInfo;
 import com.siemens.pki.cmpracomponent.cmpextension.KemOtherInfo;
 import com.siemens.pki.cmpracomponent.configuration.VerificationContext;
 import com.siemens.pki.cmpracomponent.cryptoservices.KdfFunction;
-import com.siemens.pki.cmpracomponent.cryptoservices.KemHandler;
 import com.siemens.pki.cmpracomponent.cryptoservices.WrappedMac;
 import com.siemens.pki.cmpracomponent.cryptoservices.WrappedMacFactory;
 import com.siemens.pki.cmpracomponent.persistency.PersistencyContext;
@@ -54,19 +52,24 @@ public class KEMProtectionValidator implements ValidatorIF<Void> {
             throws BaseCmpException {
         try {
             final PKIHeader header = message.getHeader();
-            final InitialKemContext initialKemContext = persistencyContext.getInitialKemContext(interfaceKontext);
 
-            final KemCiphertextInfo ciphertextInfo = initialKemContext.getCiphertextInfo();
-            final byte[] sharedSecret = new KemHandler(ciphertextInfo.getKem().toString())
-                    .decapsulate(ciphertextInfo.getCt().getOctets(), config.getPrivateKemKey());
+            final InitialKemContext initialKemContext = persistencyContext.getInitialKemContext(interfaceKontext);
+            if (initialKemContext == null) {
+                throw new CmpProcessingException(interfaceName, PKIFailureInfo.badMessageCheck, "KEM context missing");
+            }
 
             final KemBMParameter kemBmpParameter =
                     KemBMParameter.getInstance(header.getProtectionAlg().getParameters());
             final ASN1Integer keyLen = kemBmpParameter.getLen();
+
             final KemOtherInfo kemOtherInfo = initialKemContext.buildKemOtherInfo(keyLen, kemBmpParameter.getMac());
 
             final KdfFunction kdf = KdfFunction.getKdfInstance(kemBmpParameter.getKdf());
-            final SecretKey key = kdf.deriveKey(sharedSecret, keyLen.getValue(), kemOtherInfo.getEncoded());
+            final SecretKey key = kdf.deriveKey(
+                    initialKemContext.getSharedSecret(config.getPrivateKemKey()),
+                    keyLen.getValue(),
+                    kemOtherInfo.getEncoded());
+
             final WrappedMac mac = WrappedMacFactory.createWrappedMac(kemBmpParameter.getMac(), key.getEncoded());
             final byte[] protectedBytes = new ProtectedPart(header, message.getBody()).getEncoded(ASN1Encoding.DER);
             final byte[] recalculatedProtection = mac.calculateMac(protectedBytes);

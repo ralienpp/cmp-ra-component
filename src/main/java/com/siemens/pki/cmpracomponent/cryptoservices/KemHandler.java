@@ -28,6 +28,7 @@ import java.security.PublicKey;
 import java.security.SecureRandom;
 import java.security.Security;
 import javax.crypto.KeyGenerator;
+import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
 import org.bouncycastle.jcajce.SecretKeyWithEncapsulation;
 import org.bouncycastle.jcajce.spec.KEMExtractSpec;
 import org.bouncycastle.jcajce.spec.KEMGenerateSpec;
@@ -100,9 +101,10 @@ public class KemHandler {
      */
     public byte[] decapsulate(byte[] encapsulation, PrivateKey priv)
             throws InvalidAlgorithmParameterException, NoSuchAlgorithmException {
-        KeyGenerator keyGenReceived = KeyGenerator.getInstance(kemAlgorithm, BC_PQ_PROV);
+        final KeyGenerator keyGenReceived = KeyGenerator.getInstance(kemAlgorithm, BC_PQ_PROV);
         keyGenReceived.init(new KEMExtractSpec(priv, encapsulation, SYMMETRIC_CIPHER));
-        SecretKeyWithEncapsulation decapsulated_secret = (SecretKeyWithEncapsulation) keyGenReceived.generateKey();
+        final SecretKeyWithEncapsulation decapsulated_secret =
+                (SecretKeyWithEncapsulation) keyGenReceived.generateKey();
         return decapsulated_secret.getEncoded();
     }
 
@@ -117,9 +119,9 @@ public class KemHandler {
      */
     public EncapResult encapsulate(PublicKey pub)
             throws InvalidAlgorithmParameterException, NoSuchAlgorithmException, NoSuchProviderException {
-        KeyGenerator keyGen = KeyGenerator.getInstance(kemAlgorithm, BC_PQ_PROV);
+        final KeyGenerator keyGen = KeyGenerator.getInstance(kemAlgorithm, BC_PQ_PROV);
         keyGen.init(new KEMGenerateSpec(pub, SYMMETRIC_CIPHER), RANDOMGENERATOR);
-        SecretKeyWithEncapsulation encapsulation = (SecretKeyWithEncapsulation) keyGen.generateKey();
+        final SecretKeyWithEncapsulation encapsulation = (SecretKeyWithEncapsulation) keyGen.generateKey();
         return new EncapResult(encapsulation.getEncoded(), encapsulation.getEncapsulation());
     }
 
@@ -130,5 +132,9 @@ public class KemHandler {
      */
     public KeyPair generateNewKeypair() {
         return kpg.generateKeyPair();
+    }
+
+    public AlgorithmIdentifier getAlgorithmIdentifier() {
+        return AlgorithmHelper.getSigningAlgIdFromName(kemAlgorithm);
     }
 }

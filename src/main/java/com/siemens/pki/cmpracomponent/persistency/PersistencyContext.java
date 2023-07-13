@@ -21,17 +21,24 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.siemens.pki.cmpracomponent.cmpextension.KemCiphertextInfo;
 import com.siemens.pki.cmpracomponent.cmpextension.KemOtherInfo;
 import com.siemens.pki.cmpracomponent.cmpextension.NewCMPObjectIdentifiers;
+import com.siemens.pki.cmpracomponent.cryptoservices.KemHandler;
+import com.siemens.pki.cmpracomponent.cryptoservices.KemHandler.EncapResult;
 import com.siemens.pki.cmpracomponent.msgvalidation.BaseCmpException;
 import com.siemens.pki.cmpracomponent.msgvalidation.CmpProcessingException;
 import com.siemens.pki.cmpracomponent.msgvalidation.CmpValidationException;
 import java.io.IOException;
+import java.security.InvalidAlgorithmParameterException;
+import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
 import java.security.PrivateKey;
+import java.security.PublicKey;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import org.bouncycastle.asn1.ASN1Integer;
 import org.bouncycastle.asn1.ASN1OctetString;
+import org.bouncycastle.asn1.BEROctetString;
 import org.bouncycastle.asn1.cmp.CMPCertificate;
 import org.bouncycastle.asn1.cmp.GenMsgContent;
 import org.bouncycastle.asn1.cmp.InfoTypeAndValue;
@@ -56,6 +63,8 @@ public class PersistencyContext {
 
         private KemCiphertextInfo ciphertextInfo;
 
+        private byte[] sharedSecret;
+
         public InitialKemContext() {}
 
         public InitialKemContext(
@@ -69,6 +78,22 @@ public class PersistencyContext {
             this.ciphertextInfo = ciphertextInfo;
         }
 
+        public InitialKemContext(
+                ASN1OctetString transactionID,
+                ASN1OctetString senderNonce,
+                ASN1OctetString recipNonce,
+                PublicKey pubkey)
+                throws NoSuchAlgorithmException, InvalidAlgorithmParameterException, NoSuchProviderException {
+            this.transactionID = transactionID;
+            this.senderNonce = senderNonce;
+            this.recipNonce = recipNonce;
+            final KemHandler kemHandler = new KemHandler(pubkey.getAlgorithm());
+            final EncapResult encapResult = kemHandler.encapsulate(pubkey);
+            sharedSecret = encapResult.getSharedSecret();
+            ciphertextInfo =
+                    new KemCiphertextInfo(kemHandler.getAlgorithmIdentifier(), new BEROctetString(sharedSecret));
+        }
+
         public KemOtherInfo buildKemOtherInfo(ASN1Integer len, AlgorithmIdentifier mac) {
             return new KemOtherInfo(transactionID, senderNonce, recipNonce, len, mac, ciphertextInfo.getCt());
         }
@@ -76,11 +101,20 @@ public class PersistencyContext {
         public KemCiphertextInfo getCiphertextInfo() {
             return ciphertextInfo;
         }
+
+        public byte[] getSharedSecret(PrivateKey key)
+                throws InvalidAlgorithmParameterException, NoSuchAlgorithmException {
+            if (sharedSecret == null) {
+                sharedSecret = new KemHandler(ciphertextInfo.getKem().toString())
+                        .decapsulate(ciphertextInfo.getCt().getOctets(), key);
+            }
+            return sharedSecret;
+        }
     }
 
     public enum InterfaceKontext {
         dowstream_rec,
-        dowstream_send,
+        downstream_send,
         upstream_rec,
         upstream_send
     }

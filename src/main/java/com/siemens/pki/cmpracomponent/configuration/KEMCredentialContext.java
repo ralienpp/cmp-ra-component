@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2022 Siemens AG
+ *  Copyright (c) 2023 Siemens AG
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may
  *  not use this file except in compliance with the License.
@@ -17,23 +17,20 @@
  */
 package com.siemens.pki.cmpracomponent.configuration;
 
-import com.siemens.pki.cmpracomponent.cryptoservices.CertUtility;
+import java.security.PublicKey;
 import org.bouncycastle.asn1.pkcs.PKCSObjectIdentifiers;
 
 /**
  * an instance implementing {@link CredentialContext} provides all
  * attributes needed for shared secret based CMP protection
  */
-public interface SharedSecretCredentialContext extends CredentialContext {
+public interface KEMCredentialContext extends CredentialContext {
 
     /**
-     * specify iteration count to use
-     *
-     * @return input iteration count
+     * KDF used to generate the shared secret mac key.
+     * @return KDF algorithm name, OID and optional parameters to use
      */
-    default int getIterationCount() {
-        return 10_000;
-    }
+    String getKdf();
 
     /**
      * specifies intended key length to be produced
@@ -56,45 +53,8 @@ public interface SharedSecretCredentialContext extends CredentialContext {
     }
 
     /**
-     * get the Password-Based MAC style if used for protection
-     *
-     * @return "PBMAC1", "PASSWORDBASEDMAC" or OID as string
+     * provide a public key used to build the shared secret key obtained by KEM encapsulation
+     * @return a public key
      */
-    default String getPasswordBasedMacAlgorithm() {
-        return "PBMAC1";
-    }
-
-    /**
-     * specifies the pseudo-random function or one way function to use
-     *
-     * @return a pseudo-random or owf function
-     */
-    default String getPrf() {
-        return "SHA256";
-    }
-
-    /**
-     * specify a salt to use
-     *
-     * @return input salt
-     */
-    default byte[] getSalt() {
-        return CertUtility.generateRandomBytes(20);
-    }
-
-    /**
-     * optionally provide a sender KID to be used for protected CMP message
-     *
-     * @return sender KID or <code>null</code>
-     */
-    default byte[] getSenderKID() {
-        return null;
-    }
-
-    /**
-     * provide a shared secret usable for MAC-based protection
-     *
-     * @return a shared secret
-     */
-    byte[] getSharedSecret();
+    PublicKey getPubkey();
 }

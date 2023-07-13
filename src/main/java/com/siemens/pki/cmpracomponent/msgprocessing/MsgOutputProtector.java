@@ -26,10 +26,15 @@ import com.siemens.pki.cmpracomponent.msggeneration.HeaderProvider;
 import com.siemens.pki.cmpracomponent.msggeneration.PkiMessageGenerator;
 import com.siemens.pki.cmpracomponent.msgvalidation.CmpProcessingException;
 import com.siemens.pki.cmpracomponent.persistency.PersistencyContext;
+import com.siemens.pki.cmpracomponent.persistency.PersistencyContext.InterfaceKontext;
 import com.siemens.pki.cmpracomponent.protection.ProtectionProvider;
 import com.siemens.pki.cmpracomponent.protection.ProtectionProviderFactory;
 import java.security.GeneralSecurityException;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Set;
 import java.util.stream.Stream;
 import org.bouncycastle.asn1.cmp.CMPCertificate;
 import org.bouncycastle.asn1.cmp.PKIBody;
@@ -44,7 +49,7 @@ import org.slf4j.LoggerFactory;
  */
 public class MsgOutputProtector {
 
-    private static final CMPCertificate[] EMPTY_CERTIFCATE_ARRAY = new CMPCertificate[0];
+    private static final CMPCertificate[] EMPTY_CERTIFCATE_ARRAY = {};
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MsgOutputProtector.class);
 
@@ -59,11 +64,15 @@ public class MsgOutputProtector {
      * @param interfaceName
      * @param persistencyContext reference to transaction specific
      *                           {@link PersistencyContext}
+     * @param interfaceKontext
      * @throws CmpProcessingException   in case of inconsistent configuration
      * @throws GeneralSecurityException in case of broken configuration
      */
     MsgOutputProtector(
-            final CmpMessageInterface config, final String interfaceName, final PersistencyContext persistencyContext)
+            final CmpMessageInterface config,
+            final String interfaceName,
+            final PersistencyContext persistencyContext,
+            InterfaceKontext interfaceKontext)
             throws CmpProcessingException, GeneralSecurityException {
         this.persistencyContext = persistencyContext;
         this.config = config;
@@ -75,38 +84,8 @@ public class MsgOutputProtector {
                     PKIFailureInfo.wrongAuthority,
                     "reprotectMode is reprotect, but no output credentials are given");
         }
-        protector = ProtectionProviderFactory.createProtectionProvider(outputCredentials);
-    }
-
-    private synchronized PKIMessage stripRedundantExtraCerts(PKIMessage msg) {
-        if (!config.getSuppressRedundantExtraCerts() || persistencyContext == null) {
-            return msg;
-        }
-        final CMPCertificate[] extraCerts = msg.getExtraCerts();
-        if (extraCerts == null || extraCerts.length <= 0) {
-            LOGGER.debug("no extra certs, no stripping");
-            return msg;
-        }
-
-        final List<CMPCertificate> extraCertsAsList = new LinkedList<>(Arrays.asList(extraCerts));
-        final Set<CMPCertificate> alreadySentExtraCerts = persistencyContext.getAlreadySentExtraCerts();
-
-        if (extraCertsAsList.removeAll(alreadySentExtraCerts)) {
-            // were able to drop some extra certs
-            if (LOGGER.isDebugEnabled()) {
-                // avoid unnecessary string processing, if debug isn't enabled
-                LOGGER.debug("drop from " + msg.getExtraCerts().length + " to " + extraCertsAsList.size());
-            }
-            msg = new PKIMessage(
-                    msg.getHeader(),
-                    msg.getBody(),
-                    msg.getProtection(),
-                    extraCertsAsList.isEmpty()
-                            ? null
-                            : extraCertsAsList.toArray(new CMPCertificate[extraCertsAsList.size()]));
-        }
-        alreadySentExtraCerts.addAll(extraCertsAsList);
-        return msg;
+        protector = ProtectionProviderFactory.createProtectionProvider(
+                outputCredentials, persistencyContext, interfaceKontext);
     }
 
     /**
@@ -161,5 +140,36 @@ public class MsgOutputProtector {
             default:
                 throw new IllegalArgumentException("internal error: invalid reprotectMode mode");
         }
+    }
+
+    private synchronized PKIMessage stripRedundantExtraCerts(PKIMessage msg) {
+        if (!config.getSuppressRedundantExtraCerts() || persistencyContext == null) {
+            return msg;
+        }
+        final CMPCertificate[] extraCerts = msg.getExtraCerts();
+        if (extraCerts == null || extraCerts.length <= 0) {
+            LOGGER.debug("no extra certs, no stripping");
+            return msg;
+        }
+
+        final List<CMPCertificate> extraCertsAsList = new LinkedList<>(Arrays.asList(extraCerts));
+        final Set<CMPCertificate> alreadySentExtraCerts = persistencyContext.getAlreadySentExtraCerts();
+
+        if (extraCertsAsList.removeAll(alreadySentExtraCerts)) {
+            // were able to drop some extra certs
+            if (LOGGER.isDebugEnabled()) {
+                // avoid unnecessary string processing, if debug isn't enabled
+                LOGGER.debug("drop from " + msg.getExtraCerts().length + " to " + extraCertsAsList.size());
+            }
+            msg = new PKIMessage(
+                    msg.getHeader(),
+                    msg.getBody(),
+                    msg.getProtection(),
+                    extraCertsAsList.isEmpty()
+                            ? null
+                            : extraCertsAsList.toArray(new CMPCertificate[extraCertsAsList.size()]));
+        }
+        alreadySentExtraCerts.addAll(extraCertsAsList);
+        return msg;
     }
 }

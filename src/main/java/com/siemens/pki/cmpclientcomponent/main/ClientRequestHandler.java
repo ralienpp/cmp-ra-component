@@ -34,6 +34,7 @@ import com.siemens.pki.cmpracomponent.msgvalidation.MessageBodyValidator;
 import com.siemens.pki.cmpracomponent.msgvalidation.MessageHeaderValidator;
 import com.siemens.pki.cmpracomponent.msgvalidation.ProtectionValidator;
 import com.siemens.pki.cmpracomponent.msgvalidation.ValidatorIF;
+import com.siemens.pki.cmpracomponent.persistency.PersistencyContext;
 import com.siemens.pki.cmpracomponent.persistency.PersistencyContext.InterfaceKontext;
 import com.siemens.pki.cmpracomponent.protection.ProtectionProvider;
 import com.siemens.pki.cmpracomponent.protection.ProtectionProviderFactory;
@@ -106,7 +107,8 @@ class ClientRequestHandler {
                 CmpMessageInterface upstreamConfiguration)
                 throws GeneralSecurityException {
             headerValidator = new MessageHeaderValidator(intefaceName);
-            outputProtection = ProtectionProviderFactory.createProtectionProvider(outputCredentials);
+            outputProtection = ProtectionProviderFactory.createProtectionProvider(
+                    outputCredentials, null, PersistencyContext.InterfaceKontext.upstream_send);
             this.inputVerification = inputVerification;
             protectionValidator = new ProtectionValidator(intefaceName, inputVerification, null);
             if (upstreamConfiguration != null) {
