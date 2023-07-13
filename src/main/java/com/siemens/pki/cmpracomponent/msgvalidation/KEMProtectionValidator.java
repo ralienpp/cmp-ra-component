@@ -65,7 +65,7 @@ public class KEMProtectionValidator implements ValidatorIF<Void> {
                             kemCiphertextInfo.getKem().toString())
                     .decapsulate(kemCiphertextInfo.getCt().getOctets(), decapKey);
 
-            final BigInteger keyLength = kemBmpParameter.getLen().getValue();
+            final int keyLength = kemBmpParameter.getLen().getValue().intValueExact();
             final KemOtherInfo kemOtherInfo = new KemOtherInfo(
                     persistencyContext.getDownStreamKemTransactionID(),
                     persistencyContext.getDownStreamKemSenderNonce(),
@@ -74,7 +74,10 @@ public class KEMProtectionValidator implements ValidatorIF<Void> {
                     kemBmpParameter.getMac(),
                     kemCiphertextInfo.getCt());
             final KdfFunction kdf = KdfFunction.getKdfInstance(keyDerivationFunc);
-            final SecretKey key = kdf.deriveKey(sharedSecret, keyLength, kemOtherInfo.getEncoded());
+
+            // NOTE: In the current version of RFC4210bis a salt is not used, therefore we explicitly set it to null.
+            //       This matter is being discussed on the mailing list, update this once things are clear.
+            final SecretKey key = kdf.deriveKey(sharedSecret, keyLength, null, kemOtherInfo.getEncoded());
             final WrappedMac mac = WrappedMacFactory.createWrappedMac(kemBmpParameter.getMac(), key.getEncoded());
             final byte[] protectedBytes = new ProtectedPart(header, message.getBody()).getEncoded(ASN1Encoding.DER);
             final byte[] recalculatedProtection = mac.calculateMac(protectedBytes);
