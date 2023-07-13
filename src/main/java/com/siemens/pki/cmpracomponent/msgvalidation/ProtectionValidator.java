@@ -59,13 +59,14 @@ public class ProtectionValidator implements ValidatorIF<Void> {
 
     /**
      * Check a incoming message for correct protection
-     *
      * @param message message to check
+     *
      * @throws CmpProcessingException in case of error or failed protection
      *                                validation
      */
     @Override
-    public Void validate(final PKIMessage message) throws BaseCmpException {
+    public Void validate(final PKIMessage message, PersistencyContext.InterfaceKontext interfaceKontext)
+            throws BaseCmpException {
         if (config == null) {
             // protection validation is not needed
             return null;
@@ -89,13 +90,13 @@ public class ProtectionValidator implements ValidatorIF<Void> {
             }
         }
         if (CMPObjectIdentifiers.passwordBasedMac.equals(protectionAlg.getAlgorithm())) {
-            new PasswordBasedMacValidator(interfaceName, config).validate(message);
+            new PasswordBasedMacValidator(interfaceName, config).validate(message, interfaceKontext);
         } else if (PKCSObjectIdentifiers.id_PBMAC1.equals(protectionAlg.getAlgorithm())) {
-            new PBMAC1ProtectionValidator(interfaceName, config).validate(message);
+            new PBMAC1ProtectionValidator(interfaceName, config).validate(message, interfaceKontext);
         } else if (NewCMPObjectIdentifiers.kemBasedMac.equals(protectionAlg.getAlgorithm())) {
-            new KEMProtectionValidator(interfaceName, config, persistencyContext).validate(message);
+            new KEMProtectionValidator(interfaceName, config, persistencyContext).validate(message, interfaceKontext);
         } else {
-            new SignatureProtectionValidator(interfaceName, config).validate(message);
+            new SignatureProtectionValidator(interfaceName, config).validate(message, interfaceKontext);
         }
         return null;
     }

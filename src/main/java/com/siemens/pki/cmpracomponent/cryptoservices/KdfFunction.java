@@ -18,10 +18,8 @@
 package com.siemens.pki.cmpracomponent.cryptoservices;
 
 import java.math.BigInteger;
-
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
-
 import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
 
 public class KdfFunction {

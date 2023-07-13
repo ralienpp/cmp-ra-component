@@ -19,12 +19,17 @@ package com.siemens.pki.cmpracomponent.msgvalidation;
 
 import com.siemens.pki.cmpracomponent.configuration.VerificationContext;
 import com.siemens.pki.cmpracomponent.cryptoservices.AlgorithmHelper;
+import com.siemens.pki.cmpracomponent.persistency.PersistencyContext;
 import java.security.MessageDigest;
 import java.util.Arrays;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import org.bouncycastle.asn1.ASN1Encoding;
-import org.bouncycastle.asn1.cmp.*;
+import org.bouncycastle.asn1.cmp.PBMParameter;
+import org.bouncycastle.asn1.cmp.PKIFailureInfo;
+import org.bouncycastle.asn1.cmp.PKIHeader;
+import org.bouncycastle.asn1.cmp.PKIMessage;
+import org.bouncycastle.asn1.cmp.ProtectedPart;
 import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
 
 /**
@@ -39,7 +44,8 @@ public class PasswordBasedMacValidator extends MacValidator {
     }
 
     @Override
-    public Void validate(final PKIMessage message) throws BaseCmpException {
+    public Void validate(final PKIMessage message, PersistencyContext.InterfaceKontext interfaceKontext)
+            throws BaseCmpException {
         try {
             final PKIHeader header = message.getHeader();
             // Construct the base key according to rfc4210, section 5.1.3.1

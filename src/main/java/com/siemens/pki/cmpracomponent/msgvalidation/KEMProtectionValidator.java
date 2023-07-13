@@ -26,8 +26,7 @@ import com.siemens.pki.cmpracomponent.cryptoservices.KemHandler;
 import com.siemens.pki.cmpracomponent.cryptoservices.WrappedMac;
 import com.siemens.pki.cmpracomponent.cryptoservices.WrappedMacFactory;
 import com.siemens.pki.cmpracomponent.persistency.PersistencyContext;
-import java.math.BigInteger;
-import java.security.PrivateKey;
+import com.siemens.pki.cmpracomponent.persistency.PersistencyContext.InitialKemContext;
 import java.util.Arrays;
 import javax.crypto.SecretKey;
 import org.bouncycastle.asn1.ASN1Encoding;
@@ -36,7 +35,6 @@ import org.bouncycastle.asn1.cmp.PKIFailureInfo;
 import org.bouncycastle.asn1.cmp.PKIHeader;
 import org.bouncycastle.asn1.cmp.PKIMessage;
 import org.bouncycastle.asn1.cmp.ProtectedPart;
-import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
 
 public class KEMProtectionValidator implements ValidatorIF<Void> {
 
@@ -52,29 +50,23 @@ public class KEMProtectionValidator implements ValidatorIF<Void> {
     }
 
     @Override
-    public Void validate(final PKIMessage message) throws BaseCmpException {
+    public Void validate(final PKIMessage message, PersistencyContext.InterfaceKontext interfaceKontext)
+            throws BaseCmpException {
         try {
             final PKIHeader header = message.getHeader();
-            final PrivateKey decapKey = config.getPrivateKemKey();
-            final KemCiphertextInfo kemCiphertextInfo = persistencyContext.getDownstreamKemCiphertextInfo();
+            final InitialKemContext initialKemContext = persistencyContext.getInitialKemContext(interfaceKontext);
+
+            final KemCiphertextInfo ciphertextInfo = initialKemContext.getCiphertextInfo();
+            final byte[] sharedSecret = new KemHandler(ciphertextInfo.getKem().toString())
+                    .decapsulate(ciphertextInfo.getCt().getOctets(), config.getPrivateKemKey());
+
             final KemBMParameter kemBmpParameter =
                     KemBMParameter.getInstance(header.getProtectionAlg().getParameters());
-            final AlgorithmIdentifier keyDerivationFunc = kemBmpParameter.getKdf();
+            final ASN1Integer keyLen = kemBmpParameter.getLen();
+            final KemOtherInfo kemOtherInfo = initialKemContext.buildKemOtherInfo(keyLen, kemBmpParameter.getMac());
 
-            final byte[] sharedSecret = new KemHandler(
-                            kemCiphertextInfo.getKem().toString())
-                    .decapsulate(kemCiphertextInfo.getCt().getOctets(), decapKey);
-
-            final BigInteger keyLength = kemBmpParameter.getLen().getValue();
-            final KemOtherInfo kemOtherInfo = new KemOtherInfo(
-                    persistencyContext.getDownStreamKemTransactionID(),
-                    persistencyContext.getDownStreamKemSenderNonce(),
-                    persistencyContext.getDownStreamKemRecipNonce(),
-                    new ASN1Integer(keyLength),
-                    kemBmpParameter.getMac(),
-                    kemCiphertextInfo.getCt());
-            final KdfFunction kdf = KdfFunction.getKdfInstance(keyDerivationFunc);
-            final SecretKey key = kdf.deriveKey(sharedSecret, keyLength, kemOtherInfo.getEncoded());
+            final KdfFunction kdf = KdfFunction.getKdfInstance(kemBmpParameter.getKdf());
+            final SecretKey key = kdf.deriveKey(sharedSecret, keyLen.getValue(), kemOtherInfo.getEncoded());
             final WrappedMac mac = WrappedMacFactory.createWrappedMac(kemBmpParameter.getMac(), key.getEncoded());
             final byte[] protectedBytes = new ProtectedPart(header, message.getBody()).getEncoded(ASN1Encoding.DER);
             final byte[] recalculatedProtection = mac.calculateMac(protectedBytes);

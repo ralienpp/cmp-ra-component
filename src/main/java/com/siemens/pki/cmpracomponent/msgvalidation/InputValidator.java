@@ -65,19 +65,20 @@ public class InputValidator implements ValidatorIF<PersistencyContext> {
     /**
      * validate a message according to the given configuration and acceptable
      * message types
-     *
      * @param in message to validate
+     *
      * @throws CmpProcessingException if validation failed
      */
     @Override
-    public PersistencyContext validate(final PKIMessage in) throws BaseCmpException {
+    public PersistencyContext validate(final PKIMessage in, PersistencyContext.InterfaceKontext interfaceKontext)
+            throws BaseCmpException {
         if (!supportedMessageTypes.contains(in.getBody().getType())) {
             throw new CmpValidationException(
                     interfaceName,
                     PKIFailureInfo.badMessageCheck,
                     "message " + MessageDumper.msgTypeAsString(in) + " not supported ");
         }
-        String certProfile = new MessageHeaderValidator(interfaceName).validate(in);
+        String certProfile = new MessageHeaderValidator(interfaceName).validate(in, interfaceKontext);
         try {
             final PersistencyContext persistencyContext = persistencyContextCreator.apply(
                     in.getHeader().getTransactionID().getOctets());
@@ -85,11 +86,12 @@ public class InputValidator implements ValidatorIF<PersistencyContext> {
             certProfile = persistencyContext.getCertProfile();
             final CmpMessageInterface cmpInterface =
                     config.apply(certProfile, in.getBody().getType());
-            new MessageBodyValidator(interfaceName, isRaVerifiedAcceptable, cmpInterface, certProfile).validate(in);
-            persistencyContext.updateDownstreamKemCiphertextInfo(in);
+            new MessageBodyValidator(interfaceName, isRaVerifiedAcceptable, cmpInterface, certProfile)
+                    .validate(in, interfaceKontext);
+            persistencyContext.setInitialKemContext(in, interfaceKontext);
             final ProtectionValidator protectionValidator =
                     new ProtectionValidator(interfaceName, cmpInterface.getInputVerification(), persistencyContext);
-            protectionValidator.validate(in);
+            protectionValidator.validate(in, interfaceKontext);
             return persistencyContext;
         } catch (final BaseCmpException ce) {
             throw ce;

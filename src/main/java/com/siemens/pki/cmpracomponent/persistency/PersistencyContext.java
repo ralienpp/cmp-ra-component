@@ -19,15 +19,18 @@ package com.siemens.pki.cmpracomponent.persistency;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.siemens.pki.cmpracomponent.cmpextension.KemCiphertextInfo;
+import com.siemens.pki.cmpracomponent.cmpextension.KemOtherInfo;
 import com.siemens.pki.cmpracomponent.cmpextension.NewCMPObjectIdentifiers;
 import com.siemens.pki.cmpracomponent.msgvalidation.BaseCmpException;
 import com.siemens.pki.cmpracomponent.msgvalidation.CmpProcessingException;
+import com.siemens.pki.cmpracomponent.msgvalidation.CmpValidationException;
 import java.io.IOException;
 import java.security.PrivateKey;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import org.bouncycastle.asn1.ASN1Integer;
 import org.bouncycastle.asn1.ASN1OctetString;
 import org.bouncycastle.asn1.cmp.CMPCertificate;
 import org.bouncycastle.asn1.cmp.GenMsgContent;
@@ -36,16 +39,88 @@ import org.bouncycastle.asn1.cmp.PKIBody;
 import org.bouncycastle.asn1.cmp.PKIFailureInfo;
 import org.bouncycastle.asn1.cmp.PKIHeader;
 import org.bouncycastle.asn1.cmp.PKIMessage;
+import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
 
 /**
  * holder for all persistent data
  */
 public class PersistencyContext {
 
+    public static class InitialKemContext {
+
+        private ASN1OctetString transactionID;
+
+        private ASN1OctetString senderNonce;
+
+        private ASN1OctetString recipNonce;
+
+        private KemCiphertextInfo ciphertextInfo;
+
+        public InitialKemContext() {}
+
+        public InitialKemContext(
+                ASN1OctetString transactionID,
+                ASN1OctetString senderNonce,
+                ASN1OctetString recipNonce,
+                KemCiphertextInfo ciphertextInfo) {
+            this.transactionID = transactionID;
+            this.senderNonce = senderNonce;
+            this.recipNonce = recipNonce;
+            this.ciphertextInfo = ciphertextInfo;
+        }
+
+        public KemOtherInfo buildKemOtherInfo(ASN1Integer len, AlgorithmIdentifier mac) {
+            return new KemOtherInfo(transactionID, senderNonce, recipNonce, len, mac, ciphertextInfo.getCt());
+        }
+
+        public KemCiphertextInfo getCiphertextInfo() {
+            return ciphertextInfo;
+        }
+    }
+
+    public enum InterfaceKontext {
+        dowstream_rec,
+        dowstream_send,
+        upstream_rec,
+        upstream_send
+    }
+
+    private static final int InitialKemContexts_SIZE = InterfaceKontext.values().length;
+
+    static InitialKemContext fetchInitialKemContext(PKIMessage msg) {
+        final PKIHeader header = msg.getHeader();
+        if (header.getGeneralInfo() != null) {
+            for (final InfoTypeAndValue itav : header.getGeneralInfo()) {
+                if (NewCMPObjectIdentifiers.kemCiphertextInfo.equals(itav.getInfoType())) {
+                    return new InitialKemContext(
+                            header.getTransactionID(),
+                            header.getSenderNonce(),
+                            header.getRecipNonce(),
+                            KemCiphertextInfo.getInstance(itav.getInfoValue()));
+                }
+            }
+        }
+        if (msg.getBody().getType() == PKIBody.TYPE_GEN_MSG || msg.getBody().getType() == PKIBody.TYPE_GEN_REP) {
+            for (final InfoTypeAndValue itav : ((GenMsgContent) msg.getBody().getContent()).toInfoTypeAndValueArray()) {
+                if (NewCMPObjectIdentifiers.kemCiphertextInfo.equals(itav.getInfoType())) {
+                    return new InitialKemContext(
+                            header.getTransactionID(),
+                            header.getSenderNonce(),
+                            header.getRecipNonce(),
+                            KemCiphertextInfo.getInstance(itav.getInfoValue()));
+                }
+            }
+        }
+        return null;
+    }
+
+    private final InitialKemContext InitialKemContexts[] = new InitialKemContext[InitialKemContexts_SIZE];
+
     @JsonIgnore
     private final TransactionStateTracker transactionStateTracker = new TransactionStateTracker(this);
 
     private Date expirationTime;
+
     private byte[] transactionId;
     private String certProfile;
     private PrivateKey newGeneratedPrivateKey;
@@ -67,14 +142,6 @@ public class PersistencyContext {
     private int certificateRequestType;
 
     private boolean delayedDeliveryInProgress;
-
-    private KemCiphertextInfo downstreamKemCiphertextInfo;
-
-    private ASN1OctetString downStreamKemTransactionID;
-
-    private ASN1OctetString downStreamKemSenderNonce;
-
-    private ASN1OctetString downStreamKemRecipNonce;
 
     public PersistencyContext() {}
 
@@ -112,24 +179,12 @@ public class PersistencyContext {
         return digestToConfirm;
     }
 
-    public KemCiphertextInfo getDownstreamKemCiphertextInfo() {
-        return downstreamKemCiphertextInfo;
-    }
-
-    public ASN1OctetString getDownStreamKemRecipNonce() {
-        return downStreamKemRecipNonce;
-    }
-
-    public ASN1OctetString getDownStreamKemSenderNonce() {
-        return downStreamKemSenderNonce;
-    }
-
-    public ASN1OctetString getDownStreamKemTransactionID() {
-        return downStreamKemTransactionID;
-    }
-
     public Date getExpirationTime() {
         return expirationTime;
+    }
+
+    public InitialKemContext getInitialKemContext(InterfaceKontext interfaceContext) {
+        return InitialKemContexts[interfaceContext.ordinal()];
     }
 
     public PKIMessage getInitialRequest() {
@@ -202,6 +257,28 @@ public class PersistencyContext {
         this.implicitConfirmGranted = implicitConfirmGranted;
     }
 
+    public void setInitialKemContext(
+            InitialKemContext initialKemContext, PersistencyContext.InterfaceKontext interfaceContext)
+            throws CmpValidationException {
+        if (initialKemContext == null) {
+            return;
+        }
+        final int index = interfaceContext.ordinal();
+        if (InitialKemContexts[index] != null) {
+            throw new CmpValidationException(
+                    getCertProfile(), PKIFailureInfo.badMessageCheck, "unexpected reinitalization of KemOtherInfo");
+        }
+        InitialKemContexts[index] = initialKemContext;
+    }
+
+    public void setInitialKemContext(PKIMessage msg, PersistencyContext.InterfaceKontext interfaceContext)
+            throws CmpValidationException {
+        final InitialKemContext initialKemContext = fetchInitialKemContext(msg);
+        if (initialKemContext != null) {
+            setInitialKemContext(initialKemContext, interfaceContext);
+        }
+    }
+
     public void setInitialRequest(final PKIMessage initialRequest) {
         this.initialRequest = initialRequest;
     }
@@ -246,34 +323,6 @@ public class PersistencyContext {
 
     public void trackResponse(final PKIMessage msg) throws BaseCmpException, IOException {
         transactionStateTracker.trackMessage(msg);
-    }
-
-    public void updateDownstreamKemCiphertextInfo(final PKIMessage msg) {
-        final PKIHeader header = msg.getHeader();
-        if (updateKemCiphertextInfo(header.getGeneralInfo())) {
-            downStreamKemTransactionID = header.getTransactionID();
-            downStreamKemSenderNonce = header.getSenderNonce();
-            downStreamKemRecipNonce = header.getRecipNonce();
-        }
-        if (msg.getBody().getType() == PKIBody.TYPE_GEN_MSG || msg.getBody().getType() == PKIBody.TYPE_GEN_REP) {
-            if (updateKemCiphertextInfo(((GenMsgContent) msg.getBody().getContent()).toInfoTypeAndValueArray())) {
-                downStreamKemTransactionID = header.getTransactionID();
-                downStreamKemSenderNonce = header.getSenderNonce();
-                downStreamKemRecipNonce = header.getRecipNonce();
-            }
-        }
-    }
-
-    private boolean updateKemCiphertextInfo(InfoTypeAndValue[] generalInfo) {
-        if (generalInfo != null) {
-            for (final InfoTypeAndValue itav : generalInfo) {
-                if (NewCMPObjectIdentifiers.kemCiphertextInfo.equals(itav.getInfoType())) {
-                    downstreamKemCiphertextInfo = KemCiphertextInfo.getInstance(itav.getInfoValue());
-                    return true;
-                }
-            }
-        }
-        return false;
     }
 
     public void updateTransactionExpirationTime(final Date expirationTime) {

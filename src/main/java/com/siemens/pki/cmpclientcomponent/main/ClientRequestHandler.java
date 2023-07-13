@@ -34,6 +34,7 @@ import com.siemens.pki.cmpracomponent.msgvalidation.MessageBodyValidator;
 import com.siemens.pki.cmpracomponent.msgvalidation.MessageHeaderValidator;
 import com.siemens.pki.cmpracomponent.msgvalidation.ProtectionValidator;
 import com.siemens.pki.cmpracomponent.msgvalidation.ValidatorIF;
+import com.siemens.pki.cmpracomponent.persistency.PersistencyContext.InterfaceKontext;
 import com.siemens.pki.cmpracomponent.protection.ProtectionProvider;
 import com.siemens.pki.cmpracomponent.protection.ProtectionProviderFactory;
 import com.siemens.pki.cmpracomponent.util.FileTracer;
@@ -125,14 +126,14 @@ class ClientRequestHandler {
         }
 
         private void validateResponse(final PKIMessage response) throws BaseCmpException {
-            headerValidator.validate(response);
-            protectionValidator.validate(response);
+            headerValidator.validate(response, InterfaceKontext.upstream_rec);
+            protectionValidator.validate(response, InterfaceKontext.upstream_rec);
 
-            bodyValidator.validate(response);
+            bodyValidator.validate(response, InterfaceKontext.upstream_rec);
         }
     }
 
-    private static final ValidatorIF<String> DUMMY_VALIDATOR = messageToValidate -> null;
+    private static final ValidatorIF<String> DUMMY_VALIDATOR = (messageToValidate, interfaceKontext) -> null;
 
     private static final int DEFAULT_PVNO = PKIHeader.CMP_2000;
 

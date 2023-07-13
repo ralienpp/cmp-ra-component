@@ -26,6 +26,7 @@ import com.siemens.pki.cmpracomponent.msgvalidation.CmpProcessingException;
 import com.siemens.pki.cmpracomponent.msgvalidation.CmpValidationException;
 import com.siemens.pki.cmpracomponent.msgvalidation.InputValidator;
 import com.siemens.pki.cmpracomponent.persistency.PersistencyContext;
+import com.siemens.pki.cmpracomponent.persistency.PersistencyContext.InterfaceKontext;
 import com.siemens.pki.cmpracomponent.persistency.PersistencyContextManager;
 import com.siemens.pki.cmpracomponent.protection.ProtectionProvider;
 import com.siemens.pki.cmpracomponent.protection.ProtectionProviderFactory;
@@ -83,6 +84,16 @@ class CmpRaUpstream implements RaUpstream {
         this.upstreamMsgHandler = upstreamExchange;
     }
 
+    void gotResponseAtUpstream(final PKIMessage responseMessage) throws Exception {
+        final PersistencyContext persistencyContext = persistencyContextManager.loadPersistencyContext(
+                responseMessage.getHeader().getTransactionID().getOctets());
+        if (persistencyContext == null) {
+            throw new IllegalStateException("no related request known for provided response");
+        }
+        persistencyContext.setPendingDelayedResponse(responseMessage);
+        persistencyContext.flush();
+    }
+
     @Override
     public PKIMessage handleRequest(final PKIMessage in, final PersistencyContext pesistencyContext)
             throws BaseCmpException {
@@ -105,7 +116,7 @@ class CmpRaUpstream implements RaUpstream {
                                     (x, y) -> false,
                                     supportedMessageTypes,
                                     x -> pesistencyContext);
-                            inputValidator.validate(delayedResponse);
+                            inputValidator.validate(delayedResponse, InterfaceKontext.upstream_rec);
                             final PKIHeader delayedRequestHeader = delayedRequest.getHeader();
                             final PKIHeader recHeader = delayedResponse.getHeader();
                             if (!Objects.equals(
@@ -171,7 +182,7 @@ class CmpRaUpstream implements RaUpstream {
                         (x, y) -> false,
                         supportedMessageTypes,
                         x -> pesistencyContext);
-                inputValidator.validate(receivedMessage);
+                inputValidator.validate(receivedMessage, InterfaceKontext.upstream_rec);
                 final PKIHeader inHeader = in.getHeader();
                 final PKIHeader recHeader = receivedMessage.getHeader();
                 if (!Objects.equals(inHeader.getTransactionID(), recHeader.getTransactionID())) {
@@ -196,15 +207,5 @@ class CmpRaUpstream implements RaUpstream {
             LOGGER.error("exception at upstream interface", ex);
             throw new CmpProcessingException(INTERFACE_NAME, PKIFailureInfo.systemFailure, ex);
         }
-    }
-
-    void gotResponseAtUpstream(final PKIMessage responseMessage) throws Exception {
-        final PersistencyContext persistencyContext = persistencyContextManager.loadPersistencyContext(
-                responseMessage.getHeader().getTransactionID().getOctets());
-        if (persistencyContext == null) {
-            throw new IllegalStateException("no related request known for provided response");
-        }
-        persistencyContext.setPendingDelayedResponse(responseMessage);
-        persistencyContext.flush();
     }
 }
