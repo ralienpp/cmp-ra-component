@@ -56,7 +56,7 @@ public class KemBMParameter extends ASN1Object {
         this.mac = mac;
     }
 
-    public KemBMParameter(AlgorithmIdentifier kdf, long len, AlgorithmIdentifier mac) {
+    public KemBMParameter(AlgorithmIdentifier kdf, int len, AlgorithmIdentifier mac) {
         this(kdf, new ASN1Integer(len), mac);
     }
 

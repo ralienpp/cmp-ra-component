@@ -36,7 +36,6 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import org.bouncycastle.asn1.ASN1Integer;
 import org.bouncycastle.asn1.ASN1OctetString;
 import org.bouncycastle.asn1.BEROctetString;
 import org.bouncycastle.asn1.cmp.CMPCertificate;
@@ -94,8 +93,8 @@ public class PersistencyContext {
                     new KemCiphertextInfo(kemHandler.getAlgorithmIdentifier(), new BEROctetString(sharedSecret));
         }
 
-        public KemOtherInfo buildKemOtherInfo(ASN1Integer len, AlgorithmIdentifier mac) {
-            return new KemOtherInfo(transactionID, senderNonce, recipNonce, len, mac, ciphertextInfo.getCt());
+        public KemOtherInfo buildKemOtherInfo(long keyLen, AlgorithmIdentifier mac) {
+            return new KemOtherInfo(transactionID, senderNonce, recipNonce, keyLen, mac, ciphertextInfo.getCt());
         }
 
         public KemCiphertextInfo getCiphertextInfo() {

@@ -32,7 +32,6 @@ import java.security.PublicKey;
 import java.util.List;
 import javax.crypto.SecretKey;
 import org.bouncycastle.asn1.ASN1Encoding;
-import org.bouncycastle.asn1.ASN1Integer;
 import org.bouncycastle.asn1.DERBitString;
 import org.bouncycastle.asn1.DEROctetString;
 import org.bouncycastle.asn1.cmp.CMPCertificate;
@@ -44,7 +43,7 @@ import org.bouncycastle.asn1.x509.GeneralName;
 public class KEMProtection implements ProtectionProvider {
 
     private final AlgorithmIdentifier kdf;
-    private final ASN1Integer keyLen;
+    private final int keyLen;
     private final AlgorithmIdentifier mac;
     private final PersistencyContext persistencyContext;
     private final InterfaceKontext interfaceKontext;
@@ -58,7 +57,7 @@ public class KEMProtection implements ProtectionProvider {
         this.persistencyContext = persistencyContext;
         this.pubkey = config.getPubkey();
         mac = new AlgorithmIdentifier(AlgorithmHelper.getOidForMac(config.getMacAlgorithm()));
-        keyLen = new ASN1Integer(config.getkeyLength());
+        keyLen = config.getkeyLength();
         kdf = AlgorithmHelper.getAlgOID(config.getKdf());
     }
 
@@ -84,11 +83,8 @@ public class KEMProtection implements ProtectionProvider {
         }
         final KemOtherInfo kemOtherInfo = initialKemContext.buildKemOtherInfo(keyLen, mac);
         final KdfFunction kdf = KdfFunction.getKdfInstance(this.kdf);
-        final SecretKey key = kdf.deriveKey(
-                initialKemContext.getSharedSecret(null),
-                keyLen.getValue().intValueExact(),
-                null,
-                kemOtherInfo.getEncoded());
+        final SecretKey key =
+                kdf.deriveKey(initialKemContext.getSharedSecret(null), keyLen, null, kemOtherInfo.getEncoded());
 
         final WrappedMac mac = WrappedMacFactory.createWrappedMac(this.mac, key.getEncoded());
         return new DERBitString(mac.calculateMac(protectedPart.getEncoded(ASN1Encoding.DER)));

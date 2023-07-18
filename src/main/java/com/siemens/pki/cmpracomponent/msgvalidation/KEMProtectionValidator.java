@@ -28,7 +28,6 @@ import com.siemens.pki.cmpracomponent.persistency.PersistencyContext.InitialKemC
 import java.util.Arrays;
 import javax.crypto.SecretKey;
 import org.bouncycastle.asn1.ASN1Encoding;
-import org.bouncycastle.asn1.ASN1Integer;
 import org.bouncycastle.asn1.cmp.PKIFailureInfo;
 import org.bouncycastle.asn1.cmp.PKIHeader;
 import org.bouncycastle.asn1.cmp.PKIMessage;
@@ -60,14 +59,14 @@ public class KEMProtectionValidator implements ValidatorIF<Void> {
 
             final KemBMParameter kemBmpParameter =
                     KemBMParameter.getInstance(header.getProtectionAlg().getParameters());
-            final ASN1Integer keyLen = kemBmpParameter.getLen();
+            final int keyLen = kemBmpParameter.getLen().intPositiveValueExact();
 
             final KemOtherInfo kemOtherInfo = initialKemContext.buildKemOtherInfo(keyLen, kemBmpParameter.getMac());
 
             final KdfFunction kdf = KdfFunction.getKdfInstance(kemBmpParameter.getKdf());
             final SecretKey key = kdf.deriveKey(
                     initialKemContext.getSharedSecret(config.getPrivateKemKey()),
-                    keyLen.getValue().intValueExact(),
+                    keyLen,
                     null,
                     kemOtherInfo.getEncoded());
 
