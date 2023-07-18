@@ -84,8 +84,11 @@ public class KEMProtection implements ProtectionProvider {
         }
         final KemOtherInfo kemOtherInfo = initialKemContext.buildKemOtherInfo(keyLen, mac);
         final KdfFunction kdf = KdfFunction.getKdfInstance(this.kdf);
-        final SecretKey key =
-                kdf.deriveKey(initialKemContext.getSharedSecret(null), keyLen.getValue(), kemOtherInfo.getEncoded());
+        final SecretKey key = kdf.deriveKey(
+                initialKemContext.getSharedSecret(null),
+                keyLen.getValue().intValueExact(),
+                null,
+                kemOtherInfo.getEncoded());
 
         final WrappedMac mac = WrappedMacFactory.createWrappedMac(this.mac, key.getEncoded());
         return new DERBitString(mac.calculateMac(protectedPart.getEncoded(ASN1Encoding.DER)));

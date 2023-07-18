@@ -67,7 +67,8 @@ public class KEMProtectionValidator implements ValidatorIF<Void> {
             final KdfFunction kdf = KdfFunction.getKdfInstance(kemBmpParameter.getKdf());
             final SecretKey key = kdf.deriveKey(
                     initialKemContext.getSharedSecret(config.getPrivateKemKey()),
-                    keyLen.getValue(),
+                    keyLen.getValue().intValueExact(),
+                    null,
                     kemOtherInfo.getEncoded());
 
             final WrappedMac mac = WrappedMacFactory.createWrappedMac(kemBmpParameter.getMac(), key.getEncoded());
