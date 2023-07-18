@@ -30,6 +30,7 @@ import java.security.NoSuchProviderException;
 import java.util.Arrays;
 import javax.crypto.SecretKey;
 import org.bouncycastle.asn1.ASN1ObjectIdentifier;
+import org.bouncycastle.asn1.bc.BCObjectIdentifiers;
 import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
 import org.bouncycastle.crypto.digests.SHA256Digest;
 import org.bouncycastle.crypto.generators.HKDFBytesGenerator;
@@ -43,7 +44,26 @@ public class TestKem {
     @Test
     public void testAllKem()
             throws NoSuchAlgorithmException, InvalidAlgorithmParameterException, NoSuchProviderException {
-        for (final String alg : new String[] {"Kyber", "CMCE"}) {
+        for (final String alg : new String[] {
+            //
+            "Kyber",
+            BCObjectIdentifiers.kyber512.getId(),
+            BCObjectIdentifiers.kyber1024_aes.getId(),
+            //
+            "CMCE",
+            //
+            "Frodo",
+            //
+            "SABER",
+            //
+            "NTRU",
+            BCObjectIdentifiers.ntruhps2048509.getId(),
+            BCObjectIdentifiers.pqc_kem_ntru.getId(),
+            //
+            "BIKE",
+            //
+            "HQC"
+        }) {
             System.out.println("alg:" + alg);
             testOneKem(alg);
         }
@@ -64,7 +84,7 @@ public class TestKem {
     @Test
     public void testHKDF() {
         final byte[] ikm = "input key".getBytes();
-        //    	        byte[] salt = "salt".getBytes();
+        // byte[] salt = "salt".getBytes();
         final String saltStr = "\u00e0Q\u0010o!'Dw75G\u0095{\u00fd\u00ccB";
         final byte[] salt = saltStr.getBytes(StandardCharsets.ISO_8859_1);
         final byte[] info = "dummy context".getBytes();

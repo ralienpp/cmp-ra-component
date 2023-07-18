@@ -89,8 +89,8 @@ public class PersistencyContext {
             final KemHandler kemHandler = new KemHandler(pubkey.getAlgorithm());
             final EncapResult encapResult = kemHandler.encapsulate(pubkey);
             sharedSecret = encapResult.getSharedSecret();
-            ciphertextInfo =
-                    new KemCiphertextInfo(kemHandler.getAlgorithmIdentifier(), new BEROctetString(sharedSecret));
+            ciphertextInfo = new KemCiphertextInfo(
+                    kemHandler.getAlgorithmIdentifier(), new BEROctetString(encapResult.getEncapsulated()));
         }
 
         public KemOtherInfo buildKemOtherInfo(long keyLen, AlgorithmIdentifier mac) {
