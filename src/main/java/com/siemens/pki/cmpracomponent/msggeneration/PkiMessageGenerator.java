@@ -31,14 +31,17 @@ import java.io.IOException;
 import java.math.BigInteger;
 import java.security.PrivateKey;
 import java.security.Signature;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.stream.Stream;
 import org.bouncycastle.asn1.ASN1Encoding;
 import org.bouncycastle.asn1.ASN1Enumerated;
 import org.bouncycastle.asn1.ASN1GeneralizedTime;
 import org.bouncycastle.asn1.ASN1Integer;
+import org.bouncycastle.asn1.ASN1ObjectIdentifier;
 import org.bouncycastle.asn1.ASN1OctetString;
 import org.bouncycastle.asn1.ASN1Sequence;
 import org.bouncycastle.asn1.DERBitString;
@@ -290,7 +293,19 @@ public class PkiMessageGenerator {
             headerBuilder.setTransactionID(headerProvider.getTransactionID());
             headerBuilder.setSenderNonce(headerProvider.getSenderNonce());
             headerBuilder.setRecipNonce(headerProvider.getRecipNonce());
-            headerBuilder.setGeneralInfo(headerProvider.getGeneralInfo());
+            final InfoTypeAndValue[] protectionGeneralInfo = protectionProvider.getGeneralInfo(headerProvider);
+            final InfoTypeAndValue[] headerProviderGeneralInfo = headerProvider.getGeneralInfo();
+            if (protectionGeneralInfo == null || protectionGeneralInfo.length <= 0) {
+                headerBuilder.setGeneralInfo(headerProviderGeneralInfo);
+            } else if (headerProviderGeneralInfo == null || headerProviderGeneralInfo.length <= 0) {
+                headerBuilder.setGeneralInfo(protectionGeneralInfo);
+            } else {
+                // merge together, last KEM protection wins
+                final HashMap<ASN1ObjectIdentifier, InfoTypeAndValue> generalInfo = new HashMap<>();
+                Arrays.stream(headerProviderGeneralInfo).forEach(x -> generalInfo.put(x.getInfoType(), x));
+                Arrays.stream(protectionGeneralInfo).forEach(x -> generalInfo.put(x.getInfoType(), x));
+                headerBuilder.setGeneralInfo(generalInfo.values().toArray(new InfoTypeAndValue[generalInfo.size()]));
+            }
             final PKIHeader generatedHeader = headerBuilder.build();
             final CMPCertificate[] generatedExtraCerts = Stream.concat(
                             defaultIfNull(protectionProvider.getProtectingExtraCerts(), Collections.emptyList())
@@ -514,8 +529,8 @@ public class PkiMessageGenerator {
     /**
      * generate a RR body
      *
-     * @param issuer       issuer of certificate to revoke
-     * @param serialNumber serialNumber of certificate to revoke
+     * @param issuer           issuer of certificate to revoke
+     * @param serialNumber     serialNumber of certificate to revoke
      * @param revocationReason the reason for this revocation
      * @return generated RR body
      * @throws IOException in case of ASN.1 processing errors

@@ -134,7 +134,7 @@ public class KemHandler {
         return kpg.generateKeyPair();
     }
 
-    public AlgorithmIdentifier getAlgorithmIdentifier() {
-        return AlgorithmHelper.getSigningAlgIdFromName(kemAlgorithm);
+    public AlgorithmIdentifier getAlgorithmIdentifier() throws NoSuchAlgorithmException {
+        return AlgorithmHelper.getKemAlgIdFromName(kemAlgorithm);
     }
 }

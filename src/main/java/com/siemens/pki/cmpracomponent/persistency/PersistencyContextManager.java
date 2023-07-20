@@ -26,6 +26,7 @@ import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.module.SimpleModule;
+import com.siemens.pki.cmpracomponent.cmpextension.KemCiphertextInfo;
 import com.siemens.pki.cmpracomponent.configuration.PersistencyInterface;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
@@ -39,6 +40,7 @@ import javax.crypto.NoSuchPaddingException;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import org.bouncycastle.asn1.ASN1Object;
+import org.bouncycastle.asn1.ASN1OctetString;
 import org.bouncycastle.asn1.cmp.CMPCertificate;
 import org.bouncycastle.asn1.cmp.PKIMessage;
 import org.slf4j.Logger;
@@ -188,12 +190,23 @@ public class PersistencyContextManager {
         simpleModule.addSerializer(new KeySerializer(secretKey));
         simpleModule.addDeserializer(CMPCertificate.class, new Asn1ObjectDeserializer<>(CMPCertificate.class));
         simpleModule.addDeserializer(PKIMessage.class, new Asn1ObjectDeserializer<>(PKIMessage.class));
+        simpleModule.addDeserializer(KemCiphertextInfo.class, new Asn1ObjectDeserializer<>(KemCiphertextInfo.class));
+        simpleModule.addDeserializer(ASN1OctetString.class, new Asn1ObjectDeserializer<>(ASN1OctetString.class));
         simpleModule.addDeserializer(PrivateKey.class, new PrivateKeyDeserializer(secretKey));
+
         objectMapper.registerModule(simpleModule);
     }
 
     public void clearPersistencyContext(final byte[] transactionId) {
         wrappedInterface.clearLastSavedMessage(transactionId);
+    }
+
+    void flushPersistencyContext(final PersistencyContext context) throws IOException {
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug(objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(context));
+        }
+        wrappedInterface.saveLastMessage(
+                context.getTransactionId(), objectMapper.writeValueAsBytes(context), context.getExpirationTime());
     }
 
     public PersistencyContext loadCreatePersistencyContext(final byte[] transactionId) throws IOException {
@@ -215,13 +228,5 @@ public class PersistencyContextManager {
         final PersistencyContext ret = objectMapper.readValue(serializedPersistency, PersistencyContext.class);
         ret.setContextManager(this);
         return ret;
-    }
-
-    void flushPersistencyContext(final PersistencyContext context) throws IOException {
-        if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug(objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(context));
-        }
-        wrappedInterface.saveLastMessage(
-                context.getTransactionId(), objectMapper.writeValueAsBytes(context), context.getExpirationTime());
     }
 }

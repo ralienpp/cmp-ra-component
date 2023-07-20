@@ -47,6 +47,7 @@ import java.security.GeneralSecurityException;
 import java.security.InvalidKeyException;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
 import java.security.cert.CRLException;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
@@ -79,6 +80,32 @@ public class ConfigurationFactory {
     private static TrustChainAndPrivateKey eeSignaturebasedCredentials;
 
     private static SharedSecret eeSharedSecretCredentials;
+
+    public static Configuration buildKemBasedDownstreamConfiguration(PrivateKey privateKey) throws Exception {
+        final TrustChainAndPrivateKey downstreamCredentials =
+                new TrustChainAndPrivateKey("credentials/CMP_LRA_DOWNSTREAM_Keystore.p12", "Password".toCharArray());
+        final VerificationContext downstreamTrust = new VerificationContext() {
+            @Override
+            public PrivateKey getPrivateKemKey() {
+                return privateKey;
+            }
+        };
+        new SignatureValidationCredentials("credentials/CMP_EE_Root.pem", null);
+        final TrustChainAndPrivateKey upstreamCredentials =
+                new TrustChainAndPrivateKey("credentials/CMP_LRA_UPSTREAM_Keystore.p12", "Password".toCharArray());
+        final SignatureValidationCredentials upstreamTrust =
+                new SignatureValidationCredentials("credentials/CMP_CA_Root.pem", null);
+        final SignatureValidationCredentials enrollmentTrust =
+                new SignatureValidationCredentials("credentials/ENROLL_Root.pem", null);
+
+        return buildSimpleRaConfiguration(
+                downstreamCredentials,
+                ReprotectMode.keep,
+                downstreamTrust,
+                upstreamCredentials,
+                upstreamTrust,
+                enrollmentTrust);
+    }
 
     public static Configuration buildPasswordbasedDownstreamConfiguration() throws Exception {
         final CredentialContext downstreamCredentials = new SharedSecret("PBMAC1", TestUtils.PASSWORD);

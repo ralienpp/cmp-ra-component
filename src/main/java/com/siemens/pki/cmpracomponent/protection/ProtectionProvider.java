@@ -17,10 +17,12 @@
  */
 package com.siemens.pki.cmpracomponent.protection;
 
+import com.siemens.pki.cmpracomponent.msggeneration.HeaderProvider;
 import java.util.List;
 import org.bouncycastle.asn1.DERBitString;
 import org.bouncycastle.asn1.DEROctetString;
 import org.bouncycastle.asn1.cmp.CMPCertificate;
+import org.bouncycastle.asn1.cmp.InfoTypeAndValue;
 import org.bouncycastle.asn1.cmp.PKIMessage;
 import org.bouncycastle.asn1.cmp.ProtectedPart;
 import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
@@ -32,6 +34,16 @@ import org.bouncycastle.asn1.x509.GeneralName;
 public interface ProtectionProvider {
 
     ProtectionProvider NO_PROTECTION = new NoProtection();
+
+    /**
+     *
+     * @return  GeneralInfo (KemCiphertextInfo) to be used in CMP
+     *         header.
+     * @throws Exception Exception in case of error
+     */
+    default InfoTypeAndValue[] getGeneralInfo(HeaderProvider headerProvider) throws Exception {
+        return null;
+    }
 
     /**
      * @return extra certs used for protection

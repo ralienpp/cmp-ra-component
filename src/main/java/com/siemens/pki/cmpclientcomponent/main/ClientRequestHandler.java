@@ -83,6 +83,8 @@ class ClientRequestHandler {
 
         private final VerificationContext inputVerification;
 
+        private final PersistencyContext persistencyContext = new PersistencyContext(null, transactionId.getOctets());
+
         public ValidatorAndProtector(NestedEndpointContext nestedEndpoint) throws GeneralSecurityException {
             this(
                     NESTED_INTERFACE_NAME,
@@ -108,7 +110,7 @@ class ClientRequestHandler {
                 throws GeneralSecurityException {
             headerValidator = new MessageHeaderValidator(intefaceName);
             outputProtection = ProtectionProviderFactory.createProtectionProvider(
-                    outputCredentials, null, PersistencyContext.InterfaceKontext.upstream_send);
+                    outputCredentials, persistencyContext, PersistencyContext.InterfaceKontext.upstream_send);
             this.inputVerification = inputVerification;
             protectionValidator = new ProtectionValidator(intefaceName, inputVerification, null);
             if (upstreamConfiguration != null) {
@@ -156,6 +158,8 @@ class ClientRequestHandler {
 
     private final ValidatorAndProtector nestedValidatorAndProtector;
 
+    private final DEROctetString transactionId = new DEROctetString(CertUtility.generateRandomBytes(16));
+
     /**
      * @param certProfile           certificate profile to be used for enrollment.
      *                              <code>null</code> if no certificate profile
@@ -200,8 +204,7 @@ class ClientRequestHandler {
 
     PKIMessage buildInitialRequest(final PKIBody requestBody, final boolean withImplicitConfirm, final int pvno)
             throws Exception {
-        return buildRequest(
-                requestBody, new DEROctetString(CertUtility.generateRandomBytes(16)), null, pvno, withImplicitConfirm);
+        return buildRequest(requestBody, transactionId, null, pvno, withImplicitConfirm);
     }
 
     private PKIMessage buildRequest(

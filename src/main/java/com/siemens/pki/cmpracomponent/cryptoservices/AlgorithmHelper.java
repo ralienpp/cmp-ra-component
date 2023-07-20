@@ -27,6 +27,7 @@ import java.util.Map;
 import javax.crypto.Mac;
 import javax.crypto.SecretKeyFactory;
 import org.bouncycastle.asn1.ASN1ObjectIdentifier;
+import org.bouncycastle.asn1.bc.BCObjectIdentifiers;
 import org.bouncycastle.asn1.edec.EdECObjectIdentifiers;
 import org.bouncycastle.asn1.nist.NISTObjectIdentifiers;
 import org.bouncycastle.asn1.pkcs.PKCSObjectIdentifiers;
@@ -49,6 +50,72 @@ import org.slf4j.LoggerFactory;
  */
 public class AlgorithmHelper {
 
+    static class AlgorithmTableEntry<T> {
+        final String javaId;
+        final T cmpId;
+
+        private AlgorithmTableEntry(final String javaId, final T cmpId) {
+            this.javaId = javaId;
+            this.cmpId = cmpId;
+        }
+    }
+
+    abstract static class JavaAlgorithmTable<T> {
+        private static final Logger LOGGER = LoggerFactory.getLogger(AlgorithmHelper.JavaAlgorithmTable.class);
+
+        private final Map<String, AlgorithmTableEntry<T>> wrappedMap = new HashMap<>();
+
+        void addEntry(final T cmpId, final String javaId, final String... aliases) {
+            final AlgorithmTableEntry<T> entry = new AlgorithmTableEntry<>(javaId, cmpId);
+            wrappedMap.put(normalizeId(javaId), entry);
+            for (final String aktId : extractAliases(cmpId)) {
+                if (aktId != null) {
+                    wrappedMap.put(normalizeId(aktId), entry);
+                }
+            }
+            for (final String aktId : aliases) {
+                if (aktId != null) {
+                    wrappedMap.put(normalizeId(aktId), entry);
+                }
+            }
+        }
+
+        abstract String[] extractAliases(T cmpId);
+
+        T getCmpAlgorithm(final String id) {
+            return ifNotNull(wrappedMap.get(normalizeId(id)), x -> x.cmpId);
+        }
+
+        String getJavaAlgorithm(final String id) {
+            final AlgorithmTableEntry<T> ret = wrappedMap.get(normalizeId(id));
+            if (ret == null) {
+                LOGGER.warn("unknown algorithm: " + id);
+                return null;
+            }
+            return ret.javaId;
+        }
+    }
+
+    static class NameToOidTable extends HashMap<String, ASN1ObjectIdentifier> {
+
+        private static final long serialVersionUID = 1L;
+
+        void addAll(final ASN1ObjectIdentifier oid, final String... names) {
+            put(oid.toString(), oid);
+            for (final String aktName : names) {
+                put(normalizeId(aktName), oid);
+            }
+        }
+
+        public ASN1ObjectIdentifier getOid(final String key) throws NoSuchAlgorithmException {
+            final ASN1ObjectIdentifier ret = super.get(normalizeId(key));
+            if (ret == null) {
+                throw new NoSuchAlgorithmException(key);
+            }
+            return ret;
+        }
+    }
+
     public static final DefaultDigestAlgorithmIdentifierFinder DIG_ALG_FINDER =
             new DefaultDigestAlgorithmIdentifierFinder();
     private static final DefaultJcaJceHelper HELPER = new DefaultJcaJceHelper();
@@ -68,8 +135,15 @@ public class AlgorithmHelper {
     };
     private static final NameToOidTable KEY_AGREEMENT_OIDS = new NameToOidTable();
     private static final NameToOidTable KEY_ENCRYPTION_OIDS = new NameToOidTable();
+
     private static final NameToOidTable KEK_OIDS = new NameToOidTable();
+
+    private static final NameToOidTable KEM_OIDS = new NameToOidTable();
+
+    private static final NameToOidTable KDF_OIDS = new NameToOidTable();
+
     private static final Logger LOGGER = LoggerFactory.getLogger(AlgorithmHelper.class);
+
     private static final DefaultSignatureAlgorithmIdentifierFinder DEFAULT_SIGNATURE_ALGORITHM_IDENTIFIER_FINDER =
             new DefaultSignatureAlgorithmIdentifierFinder();
 
@@ -172,10 +246,17 @@ public class AlgorithmHelper {
         KEY_ENCRYPTION_OIDS.addAll(CMSAlgorithm.AES128_CBC, "AES128_CBC", "AES128");
         KEY_ENCRYPTION_OIDS.addAll(CMSAlgorithm.AES192_CBC, "AES192_CBC", "AES192");
         KEY_ENCRYPTION_OIDS.addAll(CMSAlgorithm.AES256_CBC, "AES256_CBC", "AES256");
-    }
 
-    // utility class
-    private AlgorithmHelper() {}
+        KEM_OIDS.addAll(BCObjectIdentifiers.kyber512, "kyber512");
+        KEM_OIDS.addAll(BCObjectIdentifiers.kyber1024_aes, "kyber1024_aes");
+
+        KEM_OIDS.addAll(BCObjectIdentifiers.ntruhps2048509, "ntruhps2048509");
+        KEM_OIDS.addAll(BCObjectIdentifiers.pqc_kem_ntru, "NTRU", "KEM_NTRU");
+
+        KDF_OIDS.addAll(PKCSObjectIdentifiers.id_alg_hkdf_with_sha256, "id_alg_hkdf_with_sha256", "hkdf_with_sha256");
+        KDF_OIDS.addAll(PKCSObjectIdentifiers.id_alg_hkdf_with_sha384, "id_alg_hkdf_with_sha384", "hkdf_with_sha384");
+        KDF_OIDS.addAll(PKCSObjectIdentifiers.id_alg_hkdf_with_sha512, "id_alg_hkdf_with_sha512", "hkdf_with_sha512");
+    }
 
     public static char[] convertSharedSecretToPassword(final byte[] password) {
         if (password == null || password.length == 0) {
@@ -217,6 +298,10 @@ public class AlgorithmHelper {
         return null;
     }
 
+    public static AlgorithmIdentifier getKdfOID(final String algorithm) throws NoSuchAlgorithmException {
+        return ifNotNull(KDF_OIDS.getOid(algorithm), AlgorithmIdentifier::new);
+    }
+
     /**
      * @param id name of KEK algorithm
      * @return KEK OID
@@ -224,6 +309,12 @@ public class AlgorithmHelper {
      */
     public static ASN1ObjectIdentifier getKekOID(final String id) throws NoSuchAlgorithmException {
         return KEK_OIDS.getOid(id);
+    }
+
+    public static AlgorithmIdentifier getKemAlgIdFromName(final String signatureAlgorithmName)
+            throws NoSuchAlgorithmException {
+
+        return ifNotNull(KEM_OIDS.getOid(signatureAlgorithmName), AlgorithmIdentifier::new);
     }
 
     /**
@@ -344,69 +435,6 @@ public class AlgorithmHelper {
         return id.toLowerCase().replaceAll("[\\s-_]+", "");
     }
 
-    static class AlgorithmTableEntry<T> {
-        final String javaId;
-        final T cmpId;
-
-        private AlgorithmTableEntry(final String javaId, final T cmpId) {
-            this.javaId = javaId;
-            this.cmpId = cmpId;
-        }
-    }
-
-    abstract static class JavaAlgorithmTable<T> {
-        private static final Logger LOGGER = LoggerFactory.getLogger(AlgorithmHelper.JavaAlgorithmTable.class);
-
-        private final Map<String, AlgorithmTableEntry<T>> wrappedMap = new HashMap<>();
-
-        void addEntry(final T cmpId, final String javaId, final String... aliases) {
-            final AlgorithmTableEntry<T> entry = new AlgorithmTableEntry<>(javaId, cmpId);
-            wrappedMap.put(normalizeId(javaId), entry);
-            for (final String aktId : extractAliases(cmpId)) {
-                if (aktId != null) {
-                    wrappedMap.put(normalizeId(aktId), entry);
-                }
-            }
-            for (final String aktId : aliases) {
-                if (aktId != null) {
-                    wrappedMap.put(normalizeId(aktId), entry);
-                }
-            }
-        }
-
-        abstract String[] extractAliases(T cmpId);
-
-        T getCmpAlgorithm(final String id) {
-            return ifNotNull(wrappedMap.get(normalizeId(id)), x -> x.cmpId);
-        }
-
-        String getJavaAlgorithm(final String id) {
-            final AlgorithmTableEntry<T> ret = wrappedMap.get(normalizeId(id));
-            if (ret == null) {
-                LOGGER.warn("unknown algorithm: " + id);
-                return null;
-            }
-            return ret.javaId;
-        }
-    }
-
-    static class NameToOidTable extends HashMap<String, ASN1ObjectIdentifier> {
-
-        private static final long serialVersionUID = 1L;
-
-        public ASN1ObjectIdentifier getOid(final String key) throws NoSuchAlgorithmException {
-            final ASN1ObjectIdentifier ret = super.get(normalizeId(key));
-            if (ret == null) {
-                throw new NoSuchAlgorithmException(key);
-            }
-            return ret;
-        }
-
-        void addAll(final ASN1ObjectIdentifier oid, final String... names) {
-            put(oid.toString(), oid);
-            for (final String aktName : names) {
-                put(normalizeId(aktName), oid);
-            }
-        }
-    }
+    // utility class
+    private AlgorithmHelper() {}
 }

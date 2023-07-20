@@ -18,26 +18,20 @@
 package com.siemens.pki.cmpracomponent.persistency;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.siemens.pki.cmpracomponent.cmpextension.KemCiphertextInfo;
-import com.siemens.pki.cmpracomponent.cmpextension.KemOtherInfo;
 import com.siemens.pki.cmpracomponent.cmpextension.NewCMPObjectIdentifiers;
-import com.siemens.pki.cmpracomponent.cryptoservices.KemHandler;
-import com.siemens.pki.cmpracomponent.cryptoservices.KemHandler.EncapResult;
 import com.siemens.pki.cmpracomponent.msgvalidation.BaseCmpException;
 import com.siemens.pki.cmpracomponent.msgvalidation.CmpProcessingException;
 import com.siemens.pki.cmpracomponent.msgvalidation.CmpValidationException;
 import java.io.IOException;
-import java.security.InvalidAlgorithmParameterException;
-import java.security.NoSuchAlgorithmException;
-import java.security.NoSuchProviderException;
 import java.security.PrivateKey;
-import java.security.PublicKey;
 import java.util.Date;
+import java.util.EnumMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import org.bouncycastle.asn1.ASN1OctetString;
-import org.bouncycastle.asn1.BEROctetString;
 import org.bouncycastle.asn1.cmp.CMPCertificate;
 import org.bouncycastle.asn1.cmp.GenMsgContent;
 import org.bouncycastle.asn1.cmp.InfoTypeAndValue;
@@ -45,71 +39,11 @@ import org.bouncycastle.asn1.cmp.PKIBody;
 import org.bouncycastle.asn1.cmp.PKIFailureInfo;
 import org.bouncycastle.asn1.cmp.PKIHeader;
 import org.bouncycastle.asn1.cmp.PKIMessage;
-import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
 
 /**
  * holder for all persistent data
  */
 public class PersistencyContext {
-
-    public static class InitialKemContext {
-
-        private ASN1OctetString transactionID;
-
-        private ASN1OctetString senderNonce;
-
-        private ASN1OctetString recipNonce;
-
-        private KemCiphertextInfo ciphertextInfo;
-
-        private byte[] sharedSecret;
-
-        public InitialKemContext() {}
-
-        public InitialKemContext(
-                ASN1OctetString transactionID,
-                ASN1OctetString senderNonce,
-                ASN1OctetString recipNonce,
-                KemCiphertextInfo ciphertextInfo) {
-            this.transactionID = transactionID;
-            this.senderNonce = senderNonce;
-            this.recipNonce = recipNonce;
-            this.ciphertextInfo = ciphertextInfo;
-        }
-
-        public InitialKemContext(
-                ASN1OctetString transactionID,
-                ASN1OctetString senderNonce,
-                ASN1OctetString recipNonce,
-                PublicKey pubkey)
-                throws NoSuchAlgorithmException, InvalidAlgorithmParameterException, NoSuchProviderException {
-            this.transactionID = transactionID;
-            this.senderNonce = senderNonce;
-            this.recipNonce = recipNonce;
-            final KemHandler kemHandler = new KemHandler(pubkey.getAlgorithm());
-            final EncapResult encapResult = kemHandler.encapsulate(pubkey);
-            sharedSecret = encapResult.getSharedSecret();
-            ciphertextInfo = new KemCiphertextInfo(
-                    kemHandler.getAlgorithmIdentifier(), new BEROctetString(encapResult.getEncapsulated()));
-        }
-
-        public KemOtherInfo buildKemOtherInfo(long keyLen, AlgorithmIdentifier mac) {
-            return new KemOtherInfo(transactionID, senderNonce, recipNonce, keyLen, mac, ciphertextInfo.getCt());
-        }
-
-        public KemCiphertextInfo getCiphertextInfo() {
-            return ciphertextInfo;
-        }
-
-        public byte[] getSharedSecret(PrivateKey key)
-                throws InvalidAlgorithmParameterException, NoSuchAlgorithmException {
-            if (sharedSecret == null) {
-                sharedSecret = new KemHandler(ciphertextInfo.getKem().toString())
-                        .decapsulate(ciphertextInfo.getCt().getOctets(), key);
-            }
-            return sharedSecret;
-        }
-    }
 
     public enum InterfaceKontext {
         dowstream_rec,
@@ -117,8 +51,6 @@ public class PersistencyContext {
         upstream_rec,
         upstream_send
     }
-
-    private static final int InitialKemContexts_SIZE = InterfaceKontext.values().length;
 
     static InitialKemContext fetchInitialKemContext(PKIMessage msg) {
         final PKIHeader header = msg.getHeader();
@@ -147,8 +79,6 @@ public class PersistencyContext {
         return null;
     }
 
-    private final InitialKemContext InitialKemContexts[] = new InitialKemContext[InitialKemContexts_SIZE];
-
     @JsonIgnore
     private final TransactionStateTracker transactionStateTracker = new TransactionStateTracker(this);
 
@@ -166,6 +96,10 @@ public class PersistencyContext {
     private boolean implicitConfirmGranted;
     private byte[] requestedPublicKey;
 
+    @JsonSerialize(contentAs = InitialKemContext.class)
+    @JsonDeserialize(contentAs = InitialKemContext.class)
+    private EnumMap<InterfaceKontext, InitialKemContext> initialKemContexts;
+
     @JsonIgnore
     private List<CMPCertificate> issuingChain;
 
@@ -178,11 +112,12 @@ public class PersistencyContext {
 
     public PersistencyContext() {}
 
-    PersistencyContext(final PersistencyContextManager contextManager, final byte[] transactionId) {
+    public PersistencyContext(final PersistencyContextManager contextManager, final byte[] transactionId) {
         this.transactionId = transactionId;
         this.contextManager = contextManager;
         lastTransactionState = LastTransactionState.INITIAL_STATE;
         this.certificateRequestType = -1;
+        initialKemContexts = new EnumMap<>(InterfaceKontext.class);
     }
 
     public void flush() throws IOException {
@@ -217,7 +152,7 @@ public class PersistencyContext {
     }
 
     public InitialKemContext getInitialKemContext(InterfaceKontext interfaceContext) {
-        return InitialKemContexts[interfaceContext.ordinal()];
+        return initialKemContexts.get(interfaceContext);
     }
 
     public PKIMessage getInitialRequest() {
@@ -296,12 +231,11 @@ public class PersistencyContext {
         if (initialKemContext == null) {
             return;
         }
-        final int index = interfaceContext.ordinal();
-        if (InitialKemContexts[index] != null) {
+        if (initialKemContexts.containsKey(interfaceContext)) {
             throw new CmpValidationException(
                     getCertProfile(), PKIFailureInfo.badMessageCheck, "unexpected reinitalization of KemOtherInfo");
         }
-        InitialKemContexts[index] = initialKemContext;
+        initialKemContexts.put(interfaceContext, initialKemContext);
     }
 
     public void setInitialKemContext(PKIMessage msg, PersistencyContext.InterfaceKontext interfaceContext)
