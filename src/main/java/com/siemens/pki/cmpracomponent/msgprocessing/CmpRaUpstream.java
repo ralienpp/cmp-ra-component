@@ -26,7 +26,7 @@ import com.siemens.pki.cmpracomponent.msgvalidation.CmpProcessingException;
 import com.siemens.pki.cmpracomponent.msgvalidation.CmpValidationException;
 import com.siemens.pki.cmpracomponent.msgvalidation.InputValidator;
 import com.siemens.pki.cmpracomponent.persistency.PersistencyContext;
-import com.siemens.pki.cmpracomponent.persistency.PersistencyContext.InterfaceKontext;
+import com.siemens.pki.cmpracomponent.persistency.PersistencyContext.InterfaceContext;
 import com.siemens.pki.cmpracomponent.persistency.PersistencyContextManager;
 import com.siemens.pki.cmpracomponent.protection.ProtectionProvider;
 import com.siemens.pki.cmpracomponent.protection.ProtectionProviderFactory;
@@ -116,7 +116,7 @@ class CmpRaUpstream implements RaUpstream {
                                     (x, y) -> false,
                                     supportedMessageTypes,
                                     x -> pesistencyContext);
-                            inputValidator.validate(delayedResponse, InterfaceKontext.upstream_rec);
+                            inputValidator.validate(delayedResponse, InterfaceContext.upstream_rec);
                             final PKIHeader delayedRequestHeader = delayedRequest.getHeader();
                             final PKIHeader recHeader = delayedResponse.getHeader();
                             if (!Objects.equals(
@@ -156,7 +156,7 @@ class CmpRaUpstream implements RaUpstream {
                                 certProfile, in.getBody().getType()),
                         INTERFACE_NAME,
                         pesistencyContext,
-                        PersistencyContext.InterfaceKontext.upstream_send);
+                        PersistencyContext.InterfaceContext.upstream_send);
                 sentMessage = outputProtector.protectAndForwardMessage(in, null);
             }
             final NestedEndpointContext nestedEndpointContext = config.getUpstreamConfiguration(
@@ -166,7 +166,7 @@ class CmpRaUpstream implements RaUpstream {
                 // wrap into nested message
                 final CredentialContext nestedOutputCredentials = nestedEndpointContext.getOutputCredentials();
                 final ProtectionProvider nestedProtector = ProtectionProviderFactory.createProtectionProvider(
-                        nestedOutputCredentials, pesistencyContext, PersistencyContext.InterfaceKontext.upstream_send);
+                        nestedOutputCredentials, pesistencyContext, PersistencyContext.InterfaceContext.upstream_send);
                 sentMessage = PkiMessageGenerator.generateAndProtectMessage(
                         PkiMessageGenerator.buildForwardingHeaderProvider(sentMessage),
                         nestedProtector,
@@ -183,7 +183,7 @@ class CmpRaUpstream implements RaUpstream {
                         (x, y) -> false,
                         supportedMessageTypes,
                         x -> pesistencyContext);
-                inputValidator.validate(receivedMessage, InterfaceKontext.upstream_rec);
+                inputValidator.validate(receivedMessage, InterfaceContext.upstream_rec);
                 final PKIHeader inHeader = in.getHeader();
                 final PKIHeader recHeader = receivedMessage.getHeader();
                 if (!Objects.equals(inHeader.getTransactionID(), recHeader.getTransactionID())) {

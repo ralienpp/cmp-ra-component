@@ -19,27 +19,24 @@ package com.siemens.pki.cmpclientcomponent.test;
 
 import static org.junit.Assert.assertNotNull;
 
+import com.siemens.pki.cmpclientcomponent.main.CmpClient.EnrollmentResult;
+import com.siemens.pki.cmpracomponent.cryptoservices.KemHandler;
+import com.siemens.pki.cmpracomponent.test.framework.ConfigurationFactory;
 import java.security.KeyPair;
-
 import org.bouncycastle.asn1.bc.BCObjectIdentifiers;
 import org.bouncycastle.asn1.cmp.PKIBody;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.siemens.pki.cmpclientcomponent.main.CmpClient.EnrollmentResult;
-import com.siemens.pki.cmpracomponent.cryptoservices.KemHandler;
-import com.siemens.pki.cmpracomponent.test.framework.ConfigurationFactory;
-
-public class TestKemBasedCr extends EnrollmentTestcaseBase {
+public class Test2ndKemMessageFlowCr extends EnrollmentTestcaseBase {
 
     private static final String UPSTREAM_TRUST_PATH = "credentials/CMP_CA_Root.pem";
 
-    private  KeyPair kemKeyPair;
-
+    private KeyPair kemKeyPair;
 
     @Before
     public void setUp() throws Exception {
-    	kemKeyPair = new KemHandler(BCObjectIdentifiers.kyber512.getId()).generateNewKeypair();
+        kemKeyPair = new KemHandler(BCObjectIdentifiers.kyber512.getId()).generateNewKeypair();
         launchCmpCaAndRa(ConfigurationFactory.buildKemBasedDownstreamConfiguration(kemKeyPair.getPrivate()));
     }
 

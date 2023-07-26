@@ -105,7 +105,7 @@ class SignatureProtectionValidator implements ValidatorIF<Void> {
     }
 
     @Override
-    public Void validate(final PKIMessage message, PersistencyContext.InterfaceKontext interfaceKontext)
+    public Void validate(final PKIMessage message, PersistencyContext.InterfaceContext interfaceContext)
             throws BaseCmpException {
         try {
             final TrustCredentialAdapter trustCredentialAdapter = new TrustCredentialAdapter(config);

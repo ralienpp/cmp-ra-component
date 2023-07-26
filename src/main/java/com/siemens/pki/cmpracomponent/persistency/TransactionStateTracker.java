@@ -71,8 +71,228 @@ class TransactionStateTracker {
 
     private final PersistencyContext persistencyContext;
 
+    private boolean kemStart = false;
+
     TransactionStateTracker(final PersistencyContext persistencyContext) {
         this.persistencyContext = persistencyContext;
+    }
+
+    private boolean grantsImplicitConfirm(final PKIMessage msg) {
+        final InfoTypeAndValue[] generalInfo = msg.getHeader().getGeneralInfo();
+        if (generalInfo == null) {
+            return false;
+        }
+        for (final InfoTypeAndValue aktGenInfo : generalInfo) {
+            if (aktGenInfo.getInfoType().equals(CMPObjectIdentifiers.it_implicitConfirm)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void handleCertResponse(final PKIMessage msg) throws CmpValidationException, CmpProcessingException {
+        persistencyContext.setImplicitConfirmGranted(
+                persistencyContext.isImplicitConfirmGranted() && grantsImplicitConfirm(msg));
+        try {
+            final Certificate enrolledCertificate = ((CertRepMessage)
+                            msg.getBody().getContent())
+                    .getResponse()[0]
+                    .getCertifiedKeyPair()
+                    .getCertOrEncCert()
+                    .getCertificate()
+                    .getX509v3PKCert();
+            final DigestCalculator dc =
+                    digestProvider.get(digestFinder.find(enrolledCertificate.getSignatureAlgorithm()));
+            dc.getOutputStream().write(enrolledCertificate.getEncoded(ASN1Encoding.DER));
+            persistencyContext.setDigestToConfirm(dc.getDigest());
+            final SubjectPublicKeyInfo enrolledPublicKey = enrolledCertificate.getSubjectPublicKeyInfo();
+            if (!Arrays.equals(
+                    persistencyContext.getRequestedPublicKey(), enrolledPublicKey.getEncoded(ASN1Encoding.DER))) {
+                throw new CmpValidationException(
+                        INTERFACE_NAME, PKIFailureInfo.badMessageCheck, "wrong public key in cert response");
+            }
+            persistencyContext.setLastTransactionState(LastTransactionState.CERTIFICATE_RECEIVED);
+        } catch (final BaseCmpException ex) {
+            throw ex;
+        } catch (final Exception e) {
+            persistencyContext.setLastTransactionState(LastTransactionState.IN_ERROR_STATE);
+            throw new CmpProcessingException(
+                    INTERFACE_NAME,
+                    PKIFailureInfo.badMessageCheck,
+                    "could not calculate certificate hash:" + e.getLocalizedMessage() + " for "
+                            + MessageDumper.msgAsShortString(msg));
+        }
+    }
+
+    private boolean isCertConfirm(final PKIMessage msg) {
+        return msg.getBody().getType() == PKIBody.TYPE_CERT_CONFIRM;
+    }
+
+    private boolean isCertRequest(final PKIMessage msg) {
+        switch (msg.getBody().getType()) {
+            case PKIBody.TYPE_CERT_REQ:
+            case PKIBody.TYPE_INIT_REQ:
+            case PKIBody.TYPE_KEY_UPDATE_REQ:
+            case PKIBody.TYPE_P10_CERT_REQ:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    private boolean isCertResponse(final PKIMessage msg) {
+        switch (msg.getBody().getType()) {
+            case PKIBody.TYPE_CERT_REP:
+            case PKIBody.TYPE_INIT_REP:
+            case PKIBody.TYPE_KEY_UPDATE_REP:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    private boolean isCertResponseWithWaitingIndication(final PKIMessage msg) {
+        try {
+            return ((CertRepMessage) msg.getBody().getContent())
+                            .getResponse()[0]
+                            .getStatus()
+                            .getStatus()
+                            .intValue()
+                    == PKIStatus.WAITING;
+        } catch (final Exception ex) {
+            return false;
+        }
+    }
+
+    private boolean isConfirmConfirm(final PKIMessage msg) {
+        return msg.getBody().getType() == PKIBody.TYPE_CONFIRM;
+    }
+
+    private boolean isError(final PKIMessage msg) {
+        final PKIBody body = msg.getBody();
+        switch (body.getType()) {
+            case PKIBody.TYPE_CERT_REP:
+            case PKIBody.TYPE_INIT_REP:
+            case PKIBody.TYPE_KEY_UPDATE_REP: {
+                final CertResponse[] responses = ((CertRepMessage) body.getContent()).getResponse();
+                if (responses != null && responses.length == 1 && responses[0].getStatus() != null) {
+                    switch (responses[0].getStatus().getStatus().intValue()) {
+                        case PKIStatus.GRANTED:
+                        case PKIStatus.GRANTED_WITH_MODS:
+                        case PKIStatus.WAITING:
+                            return false;
+                    }
+                    return true;
+                }
+                return false;
+            }
+            case PKIBody.TYPE_CERT_CONFIRM: {
+                final CertStatus[] responses = ((CertConfirmContent) body.getContent()).toCertStatusArray();
+                if (responses != null && responses.length == 1 && responses[0].getStatusInfo() != null) {
+                    switch (responses[0].getStatusInfo().getStatus().intValue()) {
+                        case PKIStatus.GRANTED:
+                        case PKIStatus.GRANTED_WITH_MODS:
+                            return false;
+                    }
+                    return true;
+                }
+                return false;
+            }
+            case PKIBody.TYPE_ERROR:
+                final ErrorMsgContent errorContent = (ErrorMsgContent) body.getContent();
+                return errorContent.getPKIStatusInfo().getStatus().intValue() != PKIStatus.WAITING;
+        }
+        return false;
+    }
+
+    private boolean isGenMessage(final PKIMessage msg) {
+        return msg.getBody().getType() == PKIBody.TYPE_GEN_MSG;
+    }
+
+    private boolean isGenRep(final PKIMessage msg) {
+        return msg.getBody().getType() == PKIBody.TYPE_GEN_REP;
+    }
+
+    private boolean isP10CertRequest(final PKIMessage msg) {
+        return msg.getBody().getType() == PKIBody.TYPE_P10_CERT_REQ;
+    }
+
+    private boolean isPollRequest(final PKIMessage msg) {
+        return msg.getBody().getType() == PKIBody.TYPE_POLL_REQ;
+    }
+
+    private boolean isPollResponse(final PKIMessage msg) {
+        return msg.getBody().getType() == PKIBody.TYPE_POLL_REP;
+    }
+
+    private boolean isResponse(final PKIMessage msg) {
+        switch (msg.getBody().getType()) {
+            case PKIBody.TYPE_CERT_REP:
+            case PKIBody.TYPE_INIT_REP:
+            case PKIBody.TYPE_KEY_UPDATE_REP:
+            case PKIBody.TYPE_ERROR:
+            case PKIBody.TYPE_GEN_REP:
+            case PKIBody.TYPE_POLL_REP:
+                return true;
+        }
+        return false;
+    }
+
+    private boolean isRevocationRequest(final PKIMessage msg) {
+        return msg.getBody().getType() == PKIBody.TYPE_REVOCATION_REQ;
+    }
+
+    private boolean isRevocationResponse(final PKIMessage msg) {
+        return msg.getBody().getType() == PKIBody.TYPE_REVOCATION_REP;
+    }
+
+    private boolean isSecondRequest(final PKIMessage msg) {
+        switch (msg.getBody().getType()) {
+            case PKIBody.TYPE_POLL_REQ:
+            case PKIBody.TYPE_CERT_CONFIRM:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    boolean isTransactionTerminated() {
+        switch (persistencyContext.getLastTransactionState()) {
+            case CONFIRM_CONFIRMED:
+            case GENREP_RETURNED:
+            case IN_ERROR_STATE:
+            case REVOCATION_CONFIRMED:
+                return true;
+            case CERTIFICATE_RECEIVED:
+                return persistencyContext.isImplicitConfirmGranted();
+            default:
+                return false;
+        }
+    }
+
+    private boolean isWaitingIndication(final PKIMessage msg) {
+        final PKIBody body = msg.getBody();
+        switch (body.getType()) {
+            case PKIBody.TYPE_CERT_REP:
+            case PKIBody.TYPE_INIT_REP:
+            case PKIBody.TYPE_KEY_UPDATE_REP: {
+                final CertResponse[] responses = ((CertRepMessage) body.getContent()).getResponse();
+                if (responses != null && responses.length == 1 && responses[0].getStatus() != null) {
+                    return responses[0].getStatus().getStatus().intValue() == PKIStatus.WAITING;
+                }
+                return false;
+            }
+            case PKIBody.TYPE_ERROR: {
+                final ErrorMsgContent errorContent = (ErrorMsgContent) body.getContent();
+                return errorContent.getPKIStatusInfo().getStatus().intValue() == PKIStatus.WAITING;
+            }
+            default:
+                return false;
+        }
+    }
+
+    public void markKemStart() {
+        kemStart = true;
     }
 
     /**
@@ -255,7 +475,11 @@ class TransactionStateTracker {
                             PKIFailureInfo.transactionIdInUse,
                             "transaction in wrong state for " + MessageDumper.msgAsShortString(message));
                 }
-                persistencyContext.setLastTransactionState(LastTransactionState.GENREP_RETURNED);
+                if (kemStart) {
+                    persistencyContext.setLastTransactionState(LastTransactionState.INITIAL_STATE);
+                } else {
+                    persistencyContext.setLastTransactionState(LastTransactionState.GENREP_RETURNED);
+                }
                 return;
             case GEN_POLLING:
                 if (isPollRequest(message) || isPollResponse(message)) {
@@ -275,220 +499,6 @@ class TransactionStateTracker {
                         PKIFailureInfo.transactionIdInUse,
                         "transaction in wrong state (" + persistencyContext.getLastTransactionState() + ") for "
                                 + MessageDumper.msgAsShortString(message));
-        }
-    }
-
-    private boolean grantsImplicitConfirm(final PKIMessage msg) {
-        final InfoTypeAndValue[] generalInfo = msg.getHeader().getGeneralInfo();
-        if (generalInfo == null) {
-            return false;
-        }
-        for (final InfoTypeAndValue aktGenInfo : generalInfo) {
-            if (aktGenInfo.getInfoType().equals(CMPObjectIdentifiers.it_implicitConfirm)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private void handleCertResponse(final PKIMessage msg) throws CmpValidationException, CmpProcessingException {
-        persistencyContext.setImplicitConfirmGranted(
-                persistencyContext.isImplicitConfirmGranted() && grantsImplicitConfirm(msg));
-        try {
-            final Certificate enrolledCertificate = ((CertRepMessage)
-                            msg.getBody().getContent())
-                    .getResponse()[0]
-                    .getCertifiedKeyPair()
-                    .getCertOrEncCert()
-                    .getCertificate()
-                    .getX509v3PKCert();
-            final DigestCalculator dc =
-                    digestProvider.get(digestFinder.find(enrolledCertificate.getSignatureAlgorithm()));
-            dc.getOutputStream().write(enrolledCertificate.getEncoded(ASN1Encoding.DER));
-            persistencyContext.setDigestToConfirm(dc.getDigest());
-            final SubjectPublicKeyInfo enrolledPublicKey = enrolledCertificate.getSubjectPublicKeyInfo();
-            if (!Arrays.equals(
-                    persistencyContext.getRequestedPublicKey(), enrolledPublicKey.getEncoded(ASN1Encoding.DER))) {
-                throw new CmpValidationException(
-                        INTERFACE_NAME, PKIFailureInfo.badMessageCheck, "wrong public key in cert response");
-            }
-            persistencyContext.setLastTransactionState(LastTransactionState.CERTIFICATE_RECEIVED);
-        } catch (final BaseCmpException ex) {
-            throw ex;
-        } catch (final Exception e) {
-            persistencyContext.setLastTransactionState(LastTransactionState.IN_ERROR_STATE);
-            throw new CmpProcessingException(
-                    INTERFACE_NAME,
-                    PKIFailureInfo.badMessageCheck,
-                    "could not calculate certificate hash:" + e.getLocalizedMessage() + " for "
-                            + MessageDumper.msgAsShortString(msg));
-        }
-    }
-
-    private boolean isCertConfirm(final PKIMessage msg) {
-        return msg.getBody().getType() == PKIBody.TYPE_CERT_CONFIRM;
-    }
-
-    private boolean isCertRequest(final PKIMessage msg) {
-        switch (msg.getBody().getType()) {
-            case PKIBody.TYPE_CERT_REQ:
-            case PKIBody.TYPE_INIT_REQ:
-            case PKIBody.TYPE_KEY_UPDATE_REQ:
-            case PKIBody.TYPE_P10_CERT_REQ:
-                return true;
-            default:
-                return false;
-        }
-    }
-
-    private boolean isCertResponse(final PKIMessage msg) {
-        switch (msg.getBody().getType()) {
-            case PKIBody.TYPE_CERT_REP:
-            case PKIBody.TYPE_INIT_REP:
-            case PKIBody.TYPE_KEY_UPDATE_REP:
-                return true;
-            default:
-                return false;
-        }
-    }
-
-    private boolean isCertResponseWithWaitingIndication(final PKIMessage msg) {
-        try {
-            return ((CertRepMessage) msg.getBody().getContent())
-                            .getResponse()[0]
-                            .getStatus()
-                            .getStatus()
-                            .intValue()
-                    == PKIStatus.WAITING;
-        } catch (final Exception ex) {
-            return false;
-        }
-    }
-
-    private boolean isConfirmConfirm(final PKIMessage msg) {
-        return msg.getBody().getType() == PKIBody.TYPE_CONFIRM;
-    }
-
-    private boolean isError(final PKIMessage msg) {
-        final PKIBody body = msg.getBody();
-        switch (body.getType()) {
-            case PKIBody.TYPE_CERT_REP:
-            case PKIBody.TYPE_INIT_REP:
-            case PKIBody.TYPE_KEY_UPDATE_REP: {
-                final CertResponse[] responses = ((CertRepMessage) body.getContent()).getResponse();
-                if (responses != null && responses.length == 1 && responses[0].getStatus() != null) {
-                    switch (responses[0].getStatus().getStatus().intValue()) {
-                        case PKIStatus.GRANTED:
-                        case PKIStatus.GRANTED_WITH_MODS:
-                        case PKIStatus.WAITING:
-                            return false;
-                    }
-                    return true;
-                }
-                return false;
-            }
-            case PKIBody.TYPE_CERT_CONFIRM: {
-                final CertStatus[] responses = ((CertConfirmContent) body.getContent()).toCertStatusArray();
-                if (responses != null && responses.length == 1 && responses[0].getStatusInfo() != null) {
-                    switch (responses[0].getStatusInfo().getStatus().intValue()) {
-                        case PKIStatus.GRANTED:
-                        case PKIStatus.GRANTED_WITH_MODS:
-                            return false;
-                    }
-                    return true;
-                }
-                return false;
-            }
-            case PKIBody.TYPE_ERROR:
-                final ErrorMsgContent errorContent = (ErrorMsgContent) body.getContent();
-                return errorContent.getPKIStatusInfo().getStatus().intValue() != PKIStatus.WAITING;
-        }
-        return false;
-    }
-
-    private boolean isGenMessage(final PKIMessage msg) {
-        return msg.getBody().getType() == PKIBody.TYPE_GEN_MSG;
-    }
-
-    private boolean isGenRep(final PKIMessage msg) {
-        return msg.getBody().getType() == PKIBody.TYPE_GEN_REP;
-    }
-
-    private boolean isP10CertRequest(final PKIMessage msg) {
-        return msg.getBody().getType() == PKIBody.TYPE_P10_CERT_REQ;
-    }
-
-    private boolean isPollRequest(final PKIMessage msg) {
-        return msg.getBody().getType() == PKIBody.TYPE_POLL_REQ;
-    }
-
-    private boolean isPollResponse(final PKIMessage msg) {
-        return msg.getBody().getType() == PKIBody.TYPE_POLL_REP;
-    }
-
-    private boolean isResponse(final PKIMessage msg) {
-        switch (msg.getBody().getType()) {
-            case PKIBody.TYPE_CERT_REP:
-            case PKIBody.TYPE_INIT_REP:
-            case PKIBody.TYPE_KEY_UPDATE_REP:
-            case PKIBody.TYPE_ERROR:
-            case PKIBody.TYPE_GEN_REP:
-            case PKIBody.TYPE_POLL_REP:
-                return true;
-        }
-        return false;
-    }
-
-    private boolean isRevocationRequest(final PKIMessage msg) {
-        return msg.getBody().getType() == PKIBody.TYPE_REVOCATION_REQ;
-    }
-
-    private boolean isRevocationResponse(final PKIMessage msg) {
-        return msg.getBody().getType() == PKIBody.TYPE_REVOCATION_REP;
-    }
-
-    private boolean isSecondRequest(final PKIMessage msg) {
-        switch (msg.getBody().getType()) {
-            case PKIBody.TYPE_POLL_REQ:
-            case PKIBody.TYPE_CERT_CONFIRM:
-                return true;
-            default:
-                return false;
-        }
-    }
-
-    private boolean isWaitingIndication(final PKIMessage msg) {
-        final PKIBody body = msg.getBody();
-        switch (body.getType()) {
-            case PKIBody.TYPE_CERT_REP:
-            case PKIBody.TYPE_INIT_REP:
-            case PKIBody.TYPE_KEY_UPDATE_REP: {
-                final CertResponse[] responses = ((CertRepMessage) body.getContent()).getResponse();
-                if (responses != null && responses.length == 1 && responses[0].getStatus() != null) {
-                    return responses[0].getStatus().getStatus().intValue() == PKIStatus.WAITING;
-                }
-                return false;
-            }
-            case PKIBody.TYPE_ERROR: {
-                final ErrorMsgContent errorContent = (ErrorMsgContent) body.getContent();
-                return errorContent.getPKIStatusInfo().getStatus().intValue() == PKIStatus.WAITING;
-            }
-            default:
-                return false;
-        }
-    }
-
-    boolean isTransactionTerminated() {
-        switch (persistencyContext.getLastTransactionState()) {
-            case CONFIRM_CONFIRMED:
-            case GENREP_RETURNED:
-            case IN_ERROR_STATE:
-            case REVOCATION_CONFIRMED:
-                return true;
-            case CERTIFICATE_RECEIVED:
-                return persistencyContext.isImplicitConfirmGranted();
-            default:
-                return false;
         }
     }
 }

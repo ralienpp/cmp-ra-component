@@ -47,12 +47,12 @@ public class KEMProtectionValidator implements ValidatorIF<Void> {
     }
 
     @Override
-    public Void validate(final PKIMessage message, PersistencyContext.InterfaceKontext interfaceKontext)
+    public Void validate(final PKIMessage message, PersistencyContext.InterfaceContext interfaceContext)
             throws BaseCmpException {
         try {
             final PKIHeader header = message.getHeader();
 
-            final InitialKemContext initialKemContext = persistencyContext.getInitialKemContext(interfaceKontext);
+            final InitialKemContext initialKemContext = persistencyContext.getInitialKemContext(interfaceContext);
             if (initialKemContext == null) {
                 throw new CmpProcessingException(interfaceName, PKIFailureInfo.badMessageCheck, "KEM context missing");
             }

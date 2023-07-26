@@ -98,7 +98,7 @@ public class MessageHeaderValidator implements ValidatorIF<String> {
      * @throws BaseCmpException in case of failed validation
      */
     @Override
-    public String validate(final PKIMessage message, PersistencyContext.InterfaceKontext interfaceKontext)
+    public String validate(final PKIMessage message, PersistencyContext.InterfaceContext interfaceContext)
             throws BaseCmpException {
         assertValueNotNull(message, PKIFailureInfo.badDataFormat, "PKIMessage");
         final PKIHeader header = message.getHeader();

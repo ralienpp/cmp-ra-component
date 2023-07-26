@@ -22,7 +22,7 @@ import com.siemens.pki.cmpracomponent.configuration.KEMCredentialContext;
 import com.siemens.pki.cmpracomponent.configuration.SharedSecretCredentialContext;
 import com.siemens.pki.cmpracomponent.configuration.SignatureCredentialContext;
 import com.siemens.pki.cmpracomponent.persistency.PersistencyContext;
-import com.siemens.pki.cmpracomponent.persistency.PersistencyContext.InterfaceKontext;
+import com.siemens.pki.cmpracomponent.persistency.PersistencyContext.InterfaceContext;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
@@ -43,7 +43,7 @@ public class ProtectionProviderFactory {
      * @throws InvalidKeySpecException  in case of internal error
      */
     public static ProtectionProvider createProtectionProvider(
-            final CredentialContext config, PersistencyContext persistencyContext, InterfaceKontext interfaceKontext)
+            final CredentialContext config, PersistencyContext persistencyContext, InterfaceContext interfaceContext)
             throws InvalidKeyException, NoSuchAlgorithmException, InvalidKeySpecException {
         if (config instanceof SharedSecretCredentialContext) {
             final SharedSecretCredentialContext ssConfig = (SharedSecretCredentialContext) config;
@@ -65,7 +65,7 @@ public class ProtectionProviderFactory {
             return new SignatureBasedProtection((SignatureCredentialContext) config);
         }
         if (config instanceof KEMCredentialContext) {
-            return new KEMProtection((KEMCredentialContext) config, persistencyContext, interfaceKontext);
+            return new KEMProtection((KEMCredentialContext) config, persistencyContext, interfaceContext);
         }
         return ProtectionProvider.NO_PROTECTION;
     }

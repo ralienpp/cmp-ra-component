@@ -47,7 +47,7 @@ public class PBMAC1ProtectionValidator extends MacValidator {
     }
 
     @Override
-    public Void validate(final PKIMessage message, PersistencyContext.InterfaceKontext interfaceKontext)
+    public Void validate(final PKIMessage message, PersistencyContext.InterfaceContext interfaceContext)
             throws BaseCmpException {
         try {
             final PKIHeader header = message.getHeader();

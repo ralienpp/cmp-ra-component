@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Set;
 import org.bouncycastle.asn1.cmp.CMPCertificate;
 import org.bouncycastle.asn1.cmp.GenMsgContent;
+import org.bouncycastle.asn1.cmp.GenRepContent;
 import org.bouncycastle.asn1.cmp.InfoTypeAndValue;
 import org.bouncycastle.asn1.cmp.PKIBody;
 import org.bouncycastle.asn1.cmp.PKIFailureInfo;
@@ -45,7 +46,7 @@ import org.bouncycastle.asn1.cmp.PKIMessage;
  */
 public class PersistencyContext {
 
-    public enum InterfaceKontext {
+    public enum InterfaceContext {
         dowstream_rec,
         downstream_send,
         upstream_rec,
@@ -56,7 +57,7 @@ public class PersistencyContext {
         final PKIHeader header = msg.getHeader();
         if (header.getGeneralInfo() != null) {
             for (final InfoTypeAndValue itav : header.getGeneralInfo()) {
-                if (NewCMPObjectIdentifiers.kemCiphertextInfo.equals(itav.getInfoType())) {
+                if (NewCMPObjectIdentifiers.it_kemCiphertextInfo.equals(itav.getInfoType())) {
                     return new InitialKemContext(
                             header.getTransactionID(),
                             header.getSenderNonce(),
@@ -65,15 +66,22 @@ public class PersistencyContext {
                 }
             }
         }
-        if (msg.getBody().getType() == PKIBody.TYPE_GEN_MSG || msg.getBody().getType() == PKIBody.TYPE_GEN_REP) {
-            for (final InfoTypeAndValue itav : ((GenMsgContent) msg.getBody().getContent()).toInfoTypeAndValueArray()) {
-                if (NewCMPObjectIdentifiers.kemCiphertextInfo.equals(itav.getInfoType())) {
-                    return new InitialKemContext(
-                            header.getTransactionID(),
-                            header.getSenderNonce(),
-                            header.getRecipNonce(),
-                            KemCiphertextInfo.getInstance(itav.getInfoValue()));
-                }
+        final InfoTypeAndValue[] itavs;
+        if (msg.getBody().getType() == PKIBody.TYPE_GEN_MSG) {
+            itavs = ((GenMsgContent) msg.getBody().getContent()).toInfoTypeAndValueArray();
+        } else if (msg.getBody().getType() == PKIBody.TYPE_GEN_REP) {
+            itavs = ((GenRepContent) msg.getBody().getContent()).toInfoTypeAndValueArray();
+        } else {
+            return null;
+        }
+
+        for (final InfoTypeAndValue itav : itavs) {
+            if (NewCMPObjectIdentifiers.it_kemCiphertextInfo.equals(itav.getInfoType())) {
+                return new InitialKemContext(
+                        header.getTransactionID(),
+                        header.getSenderNonce(),
+                        header.getRecipNonce(),
+                        KemCiphertextInfo.getInstance(itav.getInfoValue()));
             }
         }
         return null;
@@ -98,7 +106,7 @@ public class PersistencyContext {
 
     @JsonSerialize(contentAs = InitialKemContext.class)
     @JsonDeserialize(contentAs = InitialKemContext.class)
-    private EnumMap<InterfaceKontext, InitialKemContext> initialKemContexts;
+    private EnumMap<InterfaceContext, InitialKemContext> initialKemContexts;
 
     @JsonIgnore
     private List<CMPCertificate> issuingChain;
@@ -117,7 +125,7 @@ public class PersistencyContext {
         this.contextManager = contextManager;
         lastTransactionState = LastTransactionState.INITIAL_STATE;
         this.certificateRequestType = -1;
-        initialKemContexts = new EnumMap<>(InterfaceKontext.class);
+        initialKemContexts = new EnumMap<>(InterfaceContext.class);
     }
 
     public void flush() throws IOException {
@@ -151,7 +159,7 @@ public class PersistencyContext {
         return expirationTime;
     }
 
-    public InitialKemContext getInitialKemContext(InterfaceKontext interfaceContext) {
+    public InitialKemContext getInitialKemContext(InterfaceContext interfaceContext) {
         return initialKemContexts.get(interfaceContext);
     }
 
@@ -195,6 +203,10 @@ public class PersistencyContext {
         return implicitConfirmGranted;
     }
 
+    public void markKemStart() {
+        transactionStateTracker.markKemStart();
+    }
+
     public void setAlreadySentExtraCerts(final Set<CMPCertificate> alreadySentExtraCerts) {
         this.alreadySentExtraCerts = alreadySentExtraCerts;
     }
@@ -226,7 +238,7 @@ public class PersistencyContext {
     }
 
     public void setInitialKemContext(
-            InitialKemContext initialKemContext, PersistencyContext.InterfaceKontext interfaceContext)
+            InitialKemContext initialKemContext, PersistencyContext.InterfaceContext interfaceContext)
             throws CmpValidationException {
         if (initialKemContext == null) {
             return;
@@ -238,7 +250,7 @@ public class PersistencyContext {
         initialKemContexts.put(interfaceContext, initialKemContext);
     }
 
-    public void setInitialKemContext(PKIMessage msg, PersistencyContext.InterfaceKontext interfaceContext)
+    public void setInitialKemContext(PKIMessage msg, PersistencyContext.InterfaceContext interfaceContext)
             throws CmpValidationException {
         final InitialKemContext initialKemContext = fetchInitialKemContext(msg);
         if (initialKemContext != null) {

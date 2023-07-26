@@ -26,11 +26,11 @@ import org.bouncycastle.asn1.cmp.PKIMessage;
 public interface ValidatorIF<ResultType> {
     /**
      * @param messageToValidate a message given ot the validator
-     * @param interfaceKontext TODO
+     * @param interfaceContext TODO
      * @return additional validation result
      * @throws CmpProcessingException if the message is invalid
      * @throws CmpValidationException in case of validation error
      */
-    ResultType validate(PKIMessage messageToValidate, PersistencyContext.InterfaceKontext interfaceKontext)
+    ResultType validate(PKIMessage messageToValidate, PersistencyContext.InterfaceContext interfaceContext)
             throws BaseCmpException;
 }

@@ -30,5 +30,5 @@ public interface NewCMPObjectIdentifiers extends CMPObjectIdentifiers {
     /**
      * id-it-KemCiphertextInfo OBJECT IDENTIFIER ::= { id-it TBD1 }
      */
-    ASN1ObjectIdentifier kemCiphertextInfo = new ASN1ObjectIdentifier("1.3.6.1.5.5.7.4.99");
+    ASN1ObjectIdentifier it_kemCiphertextInfo = new ASN1ObjectIdentifier("1.3.6.1.5.5.7.4.99");
 }

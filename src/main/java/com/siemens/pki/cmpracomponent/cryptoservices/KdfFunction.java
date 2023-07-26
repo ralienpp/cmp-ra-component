@@ -75,7 +75,7 @@ public class KdfFunction {
      * @param salt         optional, random salt to use during key derivation; set
      *                     to null if unused
      * @param context      optional, raw bytes to be treated as the context of the
-     *                     key derivation process, set to null if unused
+     *                     key derivation process, set to <code>null</code> if unused
      * @return derived key, also known as "output key material" in HKDF terminology
      */
     public SecretKey deriveKey(byte[] sharedSecret, int keyLength, byte[] salt, byte[] context) {

@@ -70,7 +70,7 @@ public class InputValidator implements ValidatorIF<PersistencyContext> {
      * @throws CmpProcessingException if validation failed
      */
     @Override
-    public PersistencyContext validate(final PKIMessage in, PersistencyContext.InterfaceKontext interfaceKontext)
+    public PersistencyContext validate(final PKIMessage in, PersistencyContext.InterfaceContext interfaceContext)
             throws BaseCmpException {
         if (!supportedMessageTypes.contains(in.getBody().getType())) {
             throw new CmpValidationException(
@@ -78,7 +78,7 @@ public class InputValidator implements ValidatorIF<PersistencyContext> {
                     PKIFailureInfo.badMessageCheck,
                     "message " + MessageDumper.msgTypeAsString(in) + " not supported ");
         }
-        String certProfile = new MessageHeaderValidator(interfaceName).validate(in, interfaceKontext);
+        String certProfile = new MessageHeaderValidator(interfaceName).validate(in, interfaceContext);
         try {
             final PersistencyContext persistencyContext = persistencyContextCreator.apply(
                     in.getHeader().getTransactionID().getOctets());
@@ -87,11 +87,11 @@ public class InputValidator implements ValidatorIF<PersistencyContext> {
             final CmpMessageInterface cmpInterface =
                     config.apply(certProfile, in.getBody().getType());
             new MessageBodyValidator(interfaceName, isRaVerifiedAcceptable, cmpInterface, certProfile)
-                    .validate(in, interfaceKontext);
-            persistencyContext.setInitialKemContext(in, interfaceKontext);
+                    .validate(in, interfaceContext);
+            persistencyContext.setInitialKemContext(in, interfaceContext);
             final ProtectionValidator protectionValidator =
                     new ProtectionValidator(interfaceName, cmpInterface.getInputVerification(), persistencyContext);
-            protectionValidator.validate(in, interfaceKontext);
+            protectionValidator.validate(in, interfaceContext);
             return persistencyContext;
         } catch (final BaseCmpException ce) {
             throw ce;

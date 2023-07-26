@@ -43,7 +43,7 @@ import com.siemens.pki.cmpracomponent.msgvalidation.InputValidator;
 import com.siemens.pki.cmpracomponent.msgvalidation.MessageHeaderValidator;
 import com.siemens.pki.cmpracomponent.msgvalidation.ProtectionValidator;
 import com.siemens.pki.cmpracomponent.persistency.PersistencyContext;
-import com.siemens.pki.cmpracomponent.persistency.PersistencyContext.InterfaceKontext;
+import com.siemens.pki.cmpracomponent.persistency.PersistencyContext.InterfaceContext;
 import com.siemens.pki.cmpracomponent.persistency.PersistencyContextManager;
 import com.siemens.pki.cmpracomponent.protection.SignatureBasedProtection;
 import com.siemens.pki.cmpracomponent.util.MessageDumper;
@@ -180,7 +180,7 @@ class RaDownstream {
                         ifNotNull(persistencyContext, PersistencyContext::getCertProfile), bodyType),
                 INTERFACE_NAME,
                 persistencyContext,
-                PersistencyContext.InterfaceKontext.downstream_send);
+                PersistencyContext.InterfaceContext.downstream_send);
     }
 
     /**
@@ -367,10 +367,10 @@ class RaDownstream {
                         final String NESTED_STRING = "nested ";
                         final MessageHeaderValidator headerValidator =
                                 new MessageHeaderValidator(NESTED_STRING + INTERFACE_NAME);
-                        headerValidator.validate(in, InterfaceKontext.dowstream_rec);
+                        headerValidator.validate(in, InterfaceContext.dowstream_rec);
                         final ProtectionValidator protectionValidator = new ProtectionValidator(
                                 NESTED_STRING + INTERFACE_NAME, nestedEndpointContext.getInputVerification(), null);
-                        protectionValidator.validate(in, InterfaceKontext.dowstream_rec);
+                        protectionValidator.validate(in, InterfaceContext.dowstream_rec);
                         final PKIMessage[] embeddedMessages = PKIMessages.getInstance(
                                         in.getBody().getContent())
                                 .toPKIMessageArray();
@@ -398,7 +398,7 @@ class RaDownstream {
                         config::isRaVerifiedAcceptable,
                         supportedMessageTypes,
                         persistencyContextManager::loadCreatePersistencyContext);
-                persistencyContext = inputValidator.validate(in, InterfaceKontext.dowstream_rec);
+                persistencyContext = inputValidator.validate(in, InterfaceContext.dowstream_rec);
                 final PKIMessage responseFromUpstream = handleValidatedRequest(in, persistencyContext);
                 // apply downstream protection
                 final List<CMPCertificate> issuingChain;
@@ -528,7 +528,10 @@ class RaDownstream {
                 // try to handle locally
                 persistencyContext.setRequestType(incomingRequest.getBody().getType());
                 final PKIMessage genmResponse = new ServiceImplementation(config)
-                        .handleValidatedInputMessage(incomingRequest, persistencyContext);
+                        .handleValidatedInputMessage(
+                                incomingRequest,
+                                persistencyContext,
+                                PersistencyContext.InterfaceContext.downstream_send);
                 if (genmResponse != null) {
                     return genmResponse;
                 }

@@ -186,7 +186,7 @@ public class MessageBodyValidator implements ValidatorIF<String> {
      * @throws BaseCmpException if validation failed
      */
     @Override
-    public String validate(final PKIMessage message, PersistencyContext.InterfaceKontext interfaceKontext)
+    public String validate(final PKIMessage message, PersistencyContext.InterfaceContext interfaceContext)
             throws BaseCmpException {
         try {
             final ASN1GeneralizedTime messageTime = message.getHeader().getMessageTime();

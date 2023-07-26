@@ -41,6 +41,7 @@ import com.siemens.pki.cmpracomponent.test.framework.SignatureValidationCredenti
 import java.io.File;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
+import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.Security;
 import java.security.cert.X509Certificate;
@@ -55,6 +56,56 @@ public class CmpClientTestcaseBase {
 
     static {
         ConfigFileLoader.setConfigFileBase(CONFIG_DIRECTORY);
+    }
+
+    protected static CmpMessageInterface getKemBasedUpstreamconfiguration(PrivateKey privateKey) {
+        return new CmpMessageInterface() {
+
+            @Override
+            public VerificationContext getInputVerification() {
+                return new VerificationContext() {
+                    @Override
+                    public PrivateKey getPrivateKemKey() {
+                        return privateKey;
+                    }
+                };
+            }
+
+            @Override
+            public NestedEndpointContext getNestedEndpointContext() {
+                return null;
+            }
+
+            @Override
+            public CredentialContext getOutputCredentials() {
+                try {
+                    return ConfigurationFactory.getEeSignaturebasedCredentials();
+                } catch (final Exception e) {
+                    fail(e.getLocalizedMessage());
+                    return null;
+                }
+            }
+
+            @Override
+            public ReprotectMode getReprotectMode() {
+                return ReprotectMode.reprotect;
+            }
+
+            @Override
+            public boolean getSuppressRedundantExtraCerts() {
+                return false;
+            }
+
+            @Override
+            public boolean isCacheExtraCerts() {
+                return false;
+            }
+
+            @Override
+            public boolean isMessageTimeDeviationAllowed(final long deviation) {
+                return deviation < 10;
+            }
+        };
     }
 
     protected static CmpMessageInterface getKemBasedUpstreamconfiguration(
@@ -230,6 +281,13 @@ public class CmpClientTestcaseBase {
     }
 
     protected UpstreamExchange upstreamExchange;
+
+    protected CmpClient getKemBasedCmpClient(
+            String certProfile, final ClientContext clientContext, PrivateKey privateKey)
+            throws GeneralSecurityException {
+        return new CmpClient(
+                certProfile, getUpstreamExchange(), getKemBasedUpstreamconfiguration(privateKey), clientContext);
+    }
 
     protected CmpClient getKemBasedCmpClient(
             String certProfile, final ClientContext clientContext, final String upstreamTrustPath, PublicKey publicKey)

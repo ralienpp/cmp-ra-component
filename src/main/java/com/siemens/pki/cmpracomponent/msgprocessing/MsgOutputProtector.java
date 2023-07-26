@@ -26,7 +26,7 @@ import com.siemens.pki.cmpracomponent.msggeneration.HeaderProvider;
 import com.siemens.pki.cmpracomponent.msggeneration.PkiMessageGenerator;
 import com.siemens.pki.cmpracomponent.msgvalidation.CmpProcessingException;
 import com.siemens.pki.cmpracomponent.persistency.PersistencyContext;
-import com.siemens.pki.cmpracomponent.persistency.PersistencyContext.InterfaceKontext;
+import com.siemens.pki.cmpracomponent.persistency.PersistencyContext.InterfaceContext;
 import com.siemens.pki.cmpracomponent.protection.ProtectionProvider;
 import com.siemens.pki.cmpracomponent.protection.ProtectionProviderFactory;
 import java.security.GeneralSecurityException;
@@ -64,7 +64,7 @@ public class MsgOutputProtector {
      * @param interfaceName
      * @param persistencyContext reference to transaction specific
      *                           {@link PersistencyContext}
-     * @param interfaceKontext
+     * @param interfaceContext
      * @throws CmpProcessingException   in case of inconsistent configuration
      * @throws GeneralSecurityException in case of broken configuration
      */
@@ -72,7 +72,7 @@ public class MsgOutputProtector {
             final CmpMessageInterface config,
             final String interfaceName,
             final PersistencyContext persistencyContext,
-            InterfaceKontext interfaceKontext)
+            InterfaceContext interfaceContext)
             throws CmpProcessingException, GeneralSecurityException {
         this.persistencyContext = persistencyContext;
         this.config = config;
@@ -85,7 +85,7 @@ public class MsgOutputProtector {
                     "reprotectMode is reprotect, but no output credentials are given");
         }
         protector = ProtectionProviderFactory.createProtectionProvider(
-                outputCredentials, persistencyContext, interfaceKontext);
+                outputCredentials, persistencyContext, interfaceContext);
     }
 
     /**
