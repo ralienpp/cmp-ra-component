@@ -46,6 +46,8 @@ public class TestKem {
             throws NoSuchAlgorithmException, InvalidAlgorithmParameterException, NoSuchProviderException {
         for (final String alg : new String[] {
             //
+            "RSA",
+            //
             "Kyber",
             BCObjectIdentifiers.kyber512.getId(),
             BCObjectIdentifiers.kyber1024_aes.getId(),

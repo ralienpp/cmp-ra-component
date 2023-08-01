@@ -41,10 +41,16 @@ public abstract class KemHandler {
 
     static {
         Security.addProvider(BC_PQ_PROV);
+        Security.addProvider(CertUtility.getBouncyCastleProvider());
     }
 
     public static KemHandler createKemHandler(String kemAlgorithm) throws NoSuchAlgorithmException {
-        return new PqKemHandler(kemAlgorithm);
+        switch (kemAlgorithm.toUpperCase()) {
+            case "RSA":
+                return new RsaKEMHandler(kemAlgorithm);
+            default:
+                return new PqKemHandler(kemAlgorithm);
+        }
     }
 
     protected final String kemAlgorithm;
