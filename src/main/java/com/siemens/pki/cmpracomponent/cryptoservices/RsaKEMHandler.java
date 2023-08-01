@@ -17,44 +17,46 @@
  */
 package com.siemens.pki.cmpracomponent.cryptoservices;
 
-import java.security.InvalidAlgorithmParameterException;
 import java.security.NoSuchAlgorithmException;
-import java.security.NoSuchProviderException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.SecureRandom;
+import java.security.interfaces.RSAPrivateKey;
+import java.security.interfaces.RSAPublicKey;
+
 import org.bouncycastle.crypto.Digest;
 import org.bouncycastle.crypto.SecretWithEncapsulation;
 import org.bouncycastle.crypto.digests.SHA256Digest;
 import org.bouncycastle.crypto.generators.KDF2BytesGenerator;
+import org.bouncycastle.crypto.kems.RSAKEMExtractor;
 import org.bouncycastle.crypto.kems.RSAKEMGenerator;
 import org.bouncycastle.crypto.params.RSAKeyParameters;
-import org.bouncycastle.jcajce.provider.asymmetric.rsa.BCRSAPublicKey;
 
 public class RsaKEMHandler extends KemHandler {
 
     private final Digest hasher = new SHA256Digest();
 
     private final KDF2BytesGenerator kdf = new KDF2BytesGenerator(hasher);
-    private final RSAKEMGenerator encapsulator = new RSAKEMGenerator(32, kdf, new SecureRandom());
+
+    private static final int derivedKeyLength = 32;
+    private static final int rsaKeyLength = 2048;
+    private final RSAKEMGenerator encapsulator = new RSAKEMGenerator(derivedKeyLength, kdf, new SecureRandom());
 
     public RsaKEMHandler(String kemAlgorithm) throws NoSuchAlgorithmException {
-        super(kemAlgorithm, KeyPairGeneratorFactory.getRsaKeyPairGenerator(2048));
+        super(kemAlgorithm, KeyPairGeneratorFactory.getRsaKeyPairGenerator(rsaKeyLength));
     }
 
     @Override
-    public byte[] decapsulate(byte[] encapsulation, PrivateKey priv)
-            throws InvalidAlgorithmParameterException, NoSuchAlgorithmException {
-        // TODO ALEX
-        // RSAKEMExtractor(RSAKeyParameters var1, int var2, DerivationFunction var3)
-        return null;
+    public byte[] decapsulate(byte[] encapsulation, PrivateKey priv) {
+        RSAKeyParameters rsaKeyParameters = new RSAKeyParameters(true, ((RSAPrivateKey) priv).getModulus(), ((RSAPrivateKey) priv).getPrivateExponent());
+        RSAKEMExtractor decapsulator = new RSAKEMExtractor(rsaKeyParameters, derivedKeyLength, kdf);
+        return decapsulator.extractSecret(encapsulation);
     }
 
     @Override
-    public SecretWithEncapsulation encapsulate(PublicKey pub)
-            throws InvalidAlgorithmParameterException, NoSuchAlgorithmException, NoSuchProviderException {
+    public SecretWithEncapsulation encapsulate(PublicKey pub) {
         final RSAKeyParameters rsaKeyParameters = new RSAKeyParameters(
-                false, ((BCRSAPublicKey) pub).getModulus(), ((BCRSAPublicKey) pub).getPublicExponent());
+                false, ((RSAPublicKey) pub).getModulus(), ((RSAPublicKey) pub).getPublicExponent());
         return encapsulator.generateEncapsulated(rsaKeyParameters);
     }
 }
