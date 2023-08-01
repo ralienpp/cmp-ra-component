@@ -27,50 +27,18 @@ import java.security.Provider;
 import java.security.PublicKey;
 import java.security.SecureRandom;
 import java.security.Security;
+
 import javax.crypto.KeyGenerator;
+
 import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
+import org.bouncycastle.crypto.SecretWithEncapsulation;
 import org.bouncycastle.jcajce.SecretKeyWithEncapsulation;
 import org.bouncycastle.jcajce.spec.KEMExtractSpec;
 import org.bouncycastle.jcajce.spec.KEMGenerateSpec;
+import org.bouncycastle.pqc.crypto.util.SecretWithEncapsulationImpl;
 import org.bouncycastle.pqc.jcajce.provider.BouncyCastlePQCProvider;
 
 public class KemHandler {
-
-    /**
-     *
-     * result of an KEM encapsulation
-     *
-     */
-    public static class EncapResult {
-        private final byte[] sharedSecret;
-        private final byte[] encapsulated;
-
-        /**
-         *
-         * @param sharedSecret the shared secret generated during encapsulation
-         * @param encapsulated the cipher text generated during encapsulation
-         */
-        public EncapResult(byte[] sharedSecret, byte[] encapsulated) {
-            this.sharedSecret = sharedSecret;
-            this.encapsulated = encapsulated;
-        }
-
-        /**
-         *
-         * @return cipher text
-         */
-        public byte[] getEncapsulated() {
-            return encapsulated;
-        }
-
-        /**
-         *
-         * @return shared secret
-         */
-        public byte[] getSharedSecret() {
-            return sharedSecret;
-        }
-    }
 
     private static final SecureRandom RANDOMGENERATOR = new SecureRandom();
 
@@ -117,12 +85,12 @@ public class KemHandler {
      * @throws NoSuchAlgorithmException
      * @throws NoSuchProviderException
      */
-    public EncapResult encapsulate(PublicKey pub)
+    public SecretWithEncapsulation encapsulate(PublicKey pub)
             throws InvalidAlgorithmParameterException, NoSuchAlgorithmException, NoSuchProviderException {
         final KeyGenerator keyGen = KeyGenerator.getInstance(kemAlgorithm, BC_PQ_PROV);
         keyGen.init(new KEMGenerateSpec(pub, SYMMETRIC_CIPHER), RANDOMGENERATOR);
         final SecretKeyWithEncapsulation encapsulation = (SecretKeyWithEncapsulation) keyGen.generateKey();
-        return new EncapResult(encapsulation.getEncoded(), encapsulation.getEncapsulation());
+        return new SecretWithEncapsulationImpl(encapsulation.getEncoded(), encapsulation.getEncapsulation());
     }
 
     /**

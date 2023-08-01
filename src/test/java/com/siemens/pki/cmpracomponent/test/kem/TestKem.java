@@ -19,25 +19,28 @@ package com.siemens.pki.cmpracomponent.test.kem;
 
 import static org.junit.Assert.assertTrue;
 
-import com.siemens.pki.cmpracomponent.cryptoservices.KdfFunction;
-import com.siemens.pki.cmpracomponent.cryptoservices.KemHandler;
-import com.siemens.pki.cmpracomponent.cryptoservices.KemHandler.EncapResult;
 import java.nio.charset.StandardCharsets;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.KeyPair;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.util.Arrays;
+
 import javax.crypto.SecretKey;
+
 import org.bouncycastle.asn1.ASN1ObjectIdentifier;
 import org.bouncycastle.asn1.bc.BCObjectIdentifiers;
 import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
+import org.bouncycastle.crypto.SecretWithEncapsulation;
 import org.bouncycastle.crypto.digests.SHA256Digest;
 import org.bouncycastle.crypto.generators.HKDFBytesGenerator;
 import org.bouncycastle.crypto.params.HKDFParameters;
 import org.bouncycastle.util.encoders.Hex;
 import org.junit.Assert;
 import org.junit.Test;
+
+import com.siemens.pki.cmpracomponent.cryptoservices.KdfFunction;
+import com.siemens.pki.cmpracomponent.cryptoservices.KemHandler;
 
 public class TestKem {
 
@@ -108,9 +111,9 @@ public class TestKem {
         final KeyPair keyPair_alice = kemHandler.generateNewKeypair();
 
         // encapsulation
-        final EncapResult encResult = kemHandler.encapsulate(keyPair_alice.getPublic());
-        final byte[] bob_shared = encResult.getSharedSecret();
-        final byte[] encapsulated = encResult.getEncapsulated();
+        final SecretWithEncapsulation encResult = kemHandler.encapsulate(keyPair_alice.getPublic());
+        final byte[] bob_shared = encResult.getSecret();
+        final byte[] encapsulated = encResult.getEncapsulation();
 
         // decapsulation
         final byte[] alice_shared = kemHandler.decapsulate(encapsulated, keyPair_alice.getPrivate());
