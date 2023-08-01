@@ -34,7 +34,8 @@ public class Test1stKemMessageFlowCr extends EnrollmentTestcaseBase {
 
     @Before
     public void setUp() throws Exception {
-        kemKeyPair = new KemHandler(BCObjectIdentifiers.kyber512.getId()).generateNewKeypair();
+        kemKeyPair = KemHandler.createKemHandler(BCObjectIdentifiers.kyber512.getId())
+                .generateNewKeypair();
         launchCmpCaAndRa(ConfigurationFactory.buildKemBasedDownstreamConfiguration(kemKeyPair.getPublic()));
     }
 

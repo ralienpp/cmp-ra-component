@@ -17,20 +17,18 @@
  */
 package com.siemens.pki.cmpracomponent.persistency;
 
+import com.siemens.pki.cmpracomponent.cmpextension.KemCiphertextInfo;
+import com.siemens.pki.cmpracomponent.cmpextension.KemOtherInfo;
+import com.siemens.pki.cmpracomponent.cryptoservices.KemHandler;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
-
 import org.bouncycastle.asn1.ASN1OctetString;
 import org.bouncycastle.asn1.BEROctetString;
 import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
 import org.bouncycastle.crypto.SecretWithEncapsulation;
-
-import com.siemens.pki.cmpracomponent.cmpextension.KemCiphertextInfo;
-import com.siemens.pki.cmpracomponent.cmpextension.KemOtherInfo;
-import com.siemens.pki.cmpracomponent.cryptoservices.KemHandler;
 
 public class InitialKemContext {
 
@@ -63,7 +61,7 @@ public class InitialKemContext {
         this.transactionID = transactionID;
         this.senderNonce = senderNonce;
         this.recipNonce = recipNonce;
-        final KemHandler kemHandler = new KemHandler(pubkey.getAlgorithm());
+        final KemHandler kemHandler = KemHandler.createKemHandler(pubkey.getAlgorithm());
         final SecretWithEncapsulation encapResult = kemHandler.encapsulate(pubkey);
         sharedSecret = encapResult.getSecret();
         ciphertextInfo = new KemCiphertextInfo(
@@ -92,7 +90,8 @@ public class InitialKemContext {
 
     public byte[] getSharedSecret(PrivateKey key) throws InvalidAlgorithmParameterException, NoSuchAlgorithmException {
         if (sharedSecret == null) {
-            sharedSecret = new KemHandler(ciphertextInfo.getKem().getAlgorithm().toString())
+            sharedSecret = KemHandler.createKemHandler(
+                            ciphertextInfo.getKem().getAlgorithm().toString())
                     .decapsulate(ciphertextInfo.getCt().getOctets(), key);
         }
         return sharedSecret;

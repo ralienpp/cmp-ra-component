@@ -19,15 +19,15 @@ package com.siemens.pki.cmpracomponent.test.kem;
 
 import static org.junit.Assert.assertTrue;
 
+import com.siemens.pki.cmpracomponent.cryptoservices.KdfFunction;
+import com.siemens.pki.cmpracomponent.cryptoservices.KemHandler;
 import java.nio.charset.StandardCharsets;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.KeyPair;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.util.Arrays;
-
 import javax.crypto.SecretKey;
-
 import org.bouncycastle.asn1.ASN1ObjectIdentifier;
 import org.bouncycastle.asn1.bc.BCObjectIdentifiers;
 import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
@@ -38,9 +38,6 @@ import org.bouncycastle.crypto.params.HKDFParameters;
 import org.bouncycastle.util.encoders.Hex;
 import org.junit.Assert;
 import org.junit.Test;
-
-import com.siemens.pki.cmpracomponent.cryptoservices.KdfFunction;
-import com.siemens.pki.cmpracomponent.cryptoservices.KemHandler;
 
 public class TestKem {
 
@@ -107,7 +104,7 @@ public class TestKem {
     public void testOneKem(String kemAlgorithm)
             throws NoSuchAlgorithmException, InvalidAlgorithmParameterException, NoSuchProviderException {
 
-        final KemHandler kemHandler = new KemHandler(kemAlgorithm);
+        final KemHandler kemHandler = KemHandler.createKemHandler(kemAlgorithm);
         final KeyPair keyPair_alice = kemHandler.generateNewKeypair();
 
         // encapsulation
