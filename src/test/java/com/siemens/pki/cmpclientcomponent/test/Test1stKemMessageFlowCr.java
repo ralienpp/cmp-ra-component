@@ -41,9 +41,9 @@ public class Test1stKemMessageFlowCr extends EnrollmentTestcaseBase {
 
     private static Object[][] inputList = {
         //
-        {PKCSObjectIdentifiers.id_rsa_KEM.getId()},
+        {PKCSObjectIdentifiers.id_rsa_KEM.getId()}, {"RSA"},
         //
-        {BCObjectIdentifiers.kyber512.getId()}
+        {BCObjectIdentifiers.kyber512.getId()}, {"KYBER"}
     };
 
     @Parameters(name = "{index}: KEM alg=>{0}")

@@ -249,6 +249,7 @@ public class AlgorithmHelper {
 
         KEM_OIDS.addAll(BCObjectIdentifiers.kyber512, "kyber512");
         KEM_OIDS.addAll(BCObjectIdentifiers.kyber1024_aes, "kyber1024_aes");
+        KEM_OIDS.addAll(BCObjectIdentifiers.kyber1024, "kyber1024");
 
         KEM_OIDS.addAll(BCObjectIdentifiers.ntruhps2048509, "ntruhps2048509");
         KEM_OIDS.addAll(BCObjectIdentifiers.pqc_kem_ntru, "NTRU", "KEM_NTRU");
