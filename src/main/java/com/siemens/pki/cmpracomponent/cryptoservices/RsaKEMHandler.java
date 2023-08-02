@@ -23,7 +23,6 @@ import java.security.PublicKey;
 import java.security.SecureRandom;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
-
 import org.bouncycastle.crypto.Digest;
 import org.bouncycastle.crypto.SecretWithEncapsulation;
 import org.bouncycastle.crypto.digests.SHA256Digest;
@@ -48,7 +47,8 @@ public class RsaKEMHandler extends KemHandler {
 
     @Override
     public byte[] decapsulate(byte[] encapsulation, PrivateKey priv) {
-        RSAKeyParameters rsaKeyParameters = new RSAKeyParameters(true, ((RSAPrivateKey) priv).getModulus(), ((RSAPrivateKey) priv).getPrivateExponent());
+        RSAKeyParameters rsaKeyParameters = new RSAKeyParameters(
+                true, ((RSAPrivateKey) priv).getModulus(), ((RSAPrivateKey) priv).getPrivateExponent());
         RSAKEMExtractor decapsulator = new RSAKEMExtractor(rsaKeyParameters, derivedKeyLength, kdf);
         return decapsulator.extractSecret(encapsulation);
     }

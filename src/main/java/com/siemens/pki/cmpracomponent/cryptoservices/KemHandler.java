@@ -27,6 +27,7 @@ import java.security.Provider;
 import java.security.PublicKey;
 import java.security.SecureRandom;
 import java.security.Security;
+import org.bouncycastle.asn1.pkcs.PKCSObjectIdentifiers;
 import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
 import org.bouncycastle.crypto.SecretWithEncapsulation;
 import org.bouncycastle.pqc.jcajce.provider.BouncyCastlePQCProvider;
@@ -45,12 +46,12 @@ public abstract class KemHandler {
     }
 
     public static KemHandler createKemHandler(String kemAlgorithm) throws NoSuchAlgorithmException {
-        switch (kemAlgorithm.toUpperCase()) {
-            case "RSA":
-                return new RsaKEMHandler(kemAlgorithm);
-            default:
-                return new PqKemHandler(kemAlgorithm);
+        PKCSObjectIdentifiers.id_rsa_KEM.getId();
+        if (PKCSObjectIdentifiers.id_rsa_KEM.getId().equalsIgnoreCase(kemAlgorithm)
+                || "RSA".equalsIgnoreCase(kemAlgorithm)) {
+            return new RsaKEMHandler(kemAlgorithm);
         }
+        return new PqKemHandler(kemAlgorithm);
     }
 
     protected final String kemAlgorithm;

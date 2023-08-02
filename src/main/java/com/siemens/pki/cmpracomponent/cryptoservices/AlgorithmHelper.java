@@ -252,6 +252,7 @@ public class AlgorithmHelper {
 
         KEM_OIDS.addAll(BCObjectIdentifiers.ntruhps2048509, "ntruhps2048509");
         KEM_OIDS.addAll(BCObjectIdentifiers.pqc_kem_ntru, "NTRU", "KEM_NTRU");
+        KEM_OIDS.addAll(PKCSObjectIdentifiers.id_rsa_KEM, "RSA");
 
         KDF_OIDS.addAll(PKCSObjectIdentifiers.id_alg_hkdf_with_sha256, "id_alg_hkdf_with_sha256", "hkdf_with_sha256");
         KDF_OIDS.addAll(PKCSObjectIdentifiers.id_alg_hkdf_with_sha384, "id_alg_hkdf_with_sha384", "hkdf_with_sha384");

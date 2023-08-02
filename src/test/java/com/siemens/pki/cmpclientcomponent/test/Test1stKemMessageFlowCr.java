@@ -22,20 +22,46 @@ import static org.junit.Assert.assertNotNull;
 import com.siemens.pki.cmpclientcomponent.main.CmpClient.EnrollmentResult;
 import com.siemens.pki.cmpracomponent.cryptoservices.KemHandler;
 import com.siemens.pki.cmpracomponent.test.framework.ConfigurationFactory;
+import java.security.GeneralSecurityException;
 import java.security.KeyPair;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import org.bouncycastle.asn1.bc.BCObjectIdentifiers;
 import org.bouncycastle.asn1.cmp.PKIBody;
+import org.bouncycastle.asn1.pkcs.PKCSObjectIdentifiers;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
 
+@RunWith(Parameterized.class)
 public class Test1stKemMessageFlowCr extends EnrollmentTestcaseBase {
 
-    private KeyPair kemKeyPair;
+    private static Object[][] inputList = {
+        //
+        {PKCSObjectIdentifiers.id_rsa_KEM.getId()},
+        //
+        {BCObjectIdentifiers.kyber512.getId()}
+    };
+
+    @Parameters(name = "{index}: KEM alg=>{0}")
+    public static List<Object[]> data() {
+        final List<Object[]> ret = new ArrayList<>(inputList.length);
+        Collections.addAll(ret, inputList);
+        return ret;
+    }
+
+    private final KeyPair kemKeyPair;
+
+    public Test1stKemMessageFlowCr(String kemAlg) throws GeneralSecurityException {
+        kemKeyPair = KemHandler.createKemHandler(kemAlg).generateNewKeypair();
+    }
 
     @Before
     public void setUp() throws Exception {
-        kemKeyPair = KemHandler.createKemHandler(BCObjectIdentifiers.kyber512.getId())
-                .generateNewKeypair();
+
         launchCmpCaAndRa(ConfigurationFactory.buildKemBasedDownstreamConfiguration(kemKeyPair.getPublic()));
     }
 
