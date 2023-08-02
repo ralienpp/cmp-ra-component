@@ -17,21 +17,11 @@
  */
 package com.siemens.pki.cmpracomponent.test.kem;
 
-import static org.junit.Assert.assertTrue;
-
 import com.siemens.pki.cmpracomponent.cryptoservices.KdfFunction;
-import com.siemens.pki.cmpracomponent.cryptoservices.KemHandler;
 import java.nio.charset.StandardCharsets;
-import java.security.InvalidAlgorithmParameterException;
-import java.security.KeyPair;
-import java.security.NoSuchAlgorithmException;
-import java.security.NoSuchProviderException;
-import java.util.Arrays;
 import javax.crypto.SecretKey;
 import org.bouncycastle.asn1.ASN1ObjectIdentifier;
-import org.bouncycastle.asn1.bc.BCObjectIdentifiers;
 import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
-import org.bouncycastle.crypto.SecretWithEncapsulation;
 import org.bouncycastle.crypto.digests.SHA256Digest;
 import org.bouncycastle.crypto.generators.HKDFBytesGenerator;
 import org.bouncycastle.crypto.params.HKDFParameters;
@@ -39,37 +29,7 @@ import org.bouncycastle.util.encoders.Hex;
 import org.junit.Assert;
 import org.junit.Test;
 
-public class TestKem {
-
-    @Test
-    public void testAllKem()
-            throws NoSuchAlgorithmException, InvalidAlgorithmParameterException, NoSuchProviderException {
-        for (final String alg : new String[] {
-            //
-            "RSA",
-            //
-            "Kyber",
-            BCObjectIdentifiers.kyber512.getId(),
-            BCObjectIdentifiers.kyber1024_aes.getId(),
-            //
-            "CMCE",
-            //
-            "Frodo",
-            //
-            "SABER",
-            //
-            "NTRU",
-            BCObjectIdentifiers.ntruhps2048509.getId(),
-            BCObjectIdentifiers.pqc_kem_ntru.getId(),
-            //
-            "BIKE",
-            //
-            "HQC"
-        }) {
-            System.out.println("alg:" + alg);
-            testOneKem(alg);
-        }
-    }
+public class TestHKDF {
 
     @Test
     public void testDeriveKey() {
@@ -101,21 +61,5 @@ public class TestKem {
         final String okmHex = Hex.toHexString(okm);
 
         Assert.assertEquals(okmHex, "4ea3a995c5d5953043680aa729818fad89ec1645f158cd5b2905ff8001373ea2");
-    }
-
-    public void testOneKem(String kemAlgorithm)
-            throws NoSuchAlgorithmException, InvalidAlgorithmParameterException, NoSuchProviderException {
-
-        final KemHandler kemHandler = KemHandler.createKemHandler(kemAlgorithm);
-        final KeyPair keyPair_alice = kemHandler.generateNewKeypair();
-
-        // encapsulation
-        final SecretWithEncapsulation encResult = kemHandler.encapsulate(keyPair_alice.getPublic());
-        final byte[] bob_shared = encResult.getSecret();
-        final byte[] encapsulated = encResult.getEncapsulation();
-
-        // decapsulation
-        final byte[] alice_shared = kemHandler.decapsulate(encapsulated, keyPair_alice.getPrivate());
-        assertTrue(Arrays.equals(bob_shared, alice_shared));
     }
 }
