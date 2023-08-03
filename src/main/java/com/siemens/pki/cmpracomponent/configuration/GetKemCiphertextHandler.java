@@ -20,29 +20,11 @@ package com.siemens.pki.cmpracomponent.configuration;
 import com.siemens.pki.cmpracomponent.util.NullUtil;
 import java.security.PublicKey;
 import java.security.cert.X509Certificate;
-import org.bouncycastle.asn1.pkcs.PKCSObjectIdentifiers;
 
 /**
  * support message handler supporting Get KEM ciphertext requests
  */
 public interface GetKemCiphertextHandler extends SupportMessageHandlerInterface {
-
-    /**
-     *
-     * @return keylen used in KemOtherInfo
-     */
-    default long getkeyLength() {
-        return 4096;
-    }
-
-    /**
-     * specifies the MAC algorithm to use and optional parameters to use.
-     *
-     * @return MAC algorithm name, OID and optional parameters to use
-     */
-    default String getMacAlgorithm() {
-        return PKCSObjectIdentifiers.id_hmacWithSHA256.getId();
-    }
 
     /**
      * provide a public key used to build the shared secret key obtained by KEM

@@ -30,7 +30,9 @@ public interface KEMCredentialContext extends CredentialContext {
      * KDF used to generate the shared secret mac key.
      * @return KDF algorithm name, OID and optional parameters to use
      */
-    String getKdf();
+    default String getKdf() {
+        return PKCSObjectIdentifiers.id_alg_hkdf_with_sha256.getId();
+    }
 
     /**
      * specifies intended key length to be produced

@@ -113,18 +113,7 @@ public class ConfigurationFactory {
     }
 
     public static Configuration buildKemBasedDownstreamConfiguration(PublicKey publicKey) throws Exception {
-        final KEMCredentialContext downstreamCredentials = new KEMCredentialContext() {
-
-            @Override
-            public String getKdf() {
-                return "hkdf_with_sha256";
-            }
-
-            @Override
-            public PublicKey getPubkey() {
-                return publicKey;
-            }
-        };
+        final KEMCredentialContext downstreamCredentials = () -> publicKey;
         final SignatureValidationCredentials downstreamTrust =
                 new SignatureValidationCredentials("credentials/CMP_EE_Root.pem", null);
         new SignatureValidationCredentials("credentials/CMP_EE_Root.pem", null);

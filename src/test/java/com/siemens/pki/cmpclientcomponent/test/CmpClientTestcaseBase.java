@@ -128,18 +128,7 @@ public class CmpClientTestcaseBase {
             @Override
             public CredentialContext getOutputCredentials() {
                 try {
-                    return new KEMCredentialContext() {
-
-                        @Override
-                        public String getKdf() {
-                            return "hkdf_with_sha256";
-                        }
-
-                        @Override
-                        public PublicKey getPubkey() {
-                            return publicKey;
-                        }
-                    };
+                    return (KEMCredentialContext) () -> publicKey;
                 } catch (final Exception e) {
                     fail(e.getLocalizedMessage());
                     return null;
