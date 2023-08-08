@@ -29,7 +29,7 @@ import java.util.Collections;
 import java.util.List;
 import org.bouncycastle.asn1.bc.BCObjectIdentifiers;
 import org.bouncycastle.asn1.cmp.PKIBody;
-import org.bouncycastle.asn1.pkcs.PKCSObjectIdentifiers;
+import org.bouncycastle.asn1.iso.ISOIECObjectIdentifiers;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -43,7 +43,7 @@ public class Test2ndKemMessageFlowCr extends EnrollmentTestcaseBase {
 
     private static Object[][] inputList = {
         //
-        {PKCSObjectIdentifiers.id_rsa_KEM.getId()}, {"RSA"},
+        {ISOIECObjectIdentifiers.id_kem_rsa.getId()}, {"RSA"},
         //
         {BCObjectIdentifiers.kyber512.getId()}, {"KYBER"}
     };

@@ -29,7 +29,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import org.bouncycastle.asn1.bc.BCObjectIdentifiers;
-import org.bouncycastle.asn1.pkcs.PKCSObjectIdentifiers;
+import org.bouncycastle.asn1.iso.ISOIECObjectIdentifiers;
 import org.bouncycastle.crypto.SecretWithEncapsulation;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -42,7 +42,7 @@ public class TestKemAlgs {
     private static Object[][] inputList = {
         //
         {"RSA"},
-        {PKCSObjectIdentifiers.id_rsa_KEM.getId()},
+        {ISOIECObjectIdentifiers.id_kem_rsa.getId()},
         //
         {"Kyber"},
         {BCObjectIdentifiers.kyber512.getId()},
