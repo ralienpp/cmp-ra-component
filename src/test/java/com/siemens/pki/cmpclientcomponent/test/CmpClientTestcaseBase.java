@@ -58,17 +58,16 @@ public class CmpClientTestcaseBase {
         ConfigFileLoader.setConfigFileBase(CONFIG_DIRECTORY);
     }
 
-    protected static CmpMessageInterface getKemBasedUpstreamconfiguration(PrivateKey privateKey) {
+    protected static CmpMessageInterface getKemBasedUpstreamconfiguration(
+            PrivateKey privateKey, String upstreamTrustPath) {
         return new CmpMessageInterface() {
+
+            final SignatureValidationCredentials upstreamTrust =
+                    new SignatureValidationCredentials(upstreamTrustPath, null);
 
             @Override
             public VerificationContext getInputVerification() {
-                return new VerificationContext() {
-                    @Override
-                    public PrivateKey getPrivateKemKey() {
-                        return privateKey;
-                    }
-                };
+                return upstreamTrust;
             }
 
             @Override
@@ -78,12 +77,12 @@ public class CmpClientTestcaseBase {
 
             @Override
             public CredentialContext getOutputCredentials() {
-                try {
-                    return ConfigurationFactory.getEeSignaturebasedCredentials();
-                } catch (final Exception e) {
-                    fail(e.getLocalizedMessage());
-                    return null;
-                }
+                return new KEMCredentialContext() {
+                    @Override
+                    public PrivateKey getPrivkey() {
+                        return privateKey;
+                    }
+                };
             }
 
             @Override
@@ -108,16 +107,17 @@ public class CmpClientTestcaseBase {
         };
     }
 
-    protected static CmpMessageInterface getKemBasedUpstreamconfiguration(
-            final String upstreamTrustPath, PublicKey publicKey) {
+    protected static CmpMessageInterface getKemBasedUpstreamconfiguration(PublicKey publicKey) {
         return new CmpMessageInterface() {
-
-            final SignatureValidationCredentials upstreamTrust =
-                    new SignatureValidationCredentials(upstreamTrustPath, null);
 
             @Override
             public VerificationContext getInputVerification() {
-                return upstreamTrust;
+                return new VerificationContext() {
+                    @Override
+                    public PublicKey getKemPubkey() {
+                        return publicKey;
+                    }
+                };
             }
 
             @Override
@@ -128,7 +128,7 @@ public class CmpClientTestcaseBase {
             @Override
             public CredentialContext getOutputCredentials() {
                 try {
-                    return (KEMCredentialContext) () -> publicKey;
+                    return ConfigurationFactory.getEeSignaturebasedCredentials();
                 } catch (final Exception e) {
                     fail(e.getLocalizedMessage());
                     return null;
@@ -271,20 +271,19 @@ public class CmpClientTestcaseBase {
 
     protected UpstreamExchange upstreamExchange;
 
-    protected CmpClient getKemBasedCmpClient(
-            String certProfile, final ClientContext clientContext, PrivateKey privateKey)
+    protected CmpClient getKemBasedCmpClient(String certProfile, final ClientContext clientContext, PublicKey publicKey)
             throws GeneralSecurityException {
         return new CmpClient(
-                certProfile, getUpstreamExchange(), getKemBasedUpstreamconfiguration(privateKey), clientContext);
+                certProfile, getUpstreamExchange(), getKemBasedUpstreamconfiguration(publicKey), clientContext);
     }
 
     protected CmpClient getKemBasedCmpClient(
-            String certProfile, final ClientContext clientContext, final String upstreamTrustPath, PublicKey publicKey)
+            String certProfile, final ClientContext clientContext, String upstreamTrustPath, PrivateKey privateKey)
             throws GeneralSecurityException {
         return new CmpClient(
                 certProfile,
                 getUpstreamExchange(),
-                getKemBasedUpstreamconfiguration(upstreamTrustPath, publicKey),
+                getKemBasedUpstreamconfiguration(privateKey, upstreamTrustPath),
                 clientContext);
     }
 

@@ -87,33 +87,12 @@ public class ConfigurationFactory {
     private static SharedSecret eeSharedSecretCredentials;
 
     public static Configuration buildKemBasedDownstreamConfiguration(PrivateKey privateKey) throws Exception {
-        final TrustChainAndPrivateKey downstreamCredentials =
-                new TrustChainAndPrivateKey("credentials/CMP_LRA_DOWNSTREAM_Keystore.p12", "Password".toCharArray());
-        final VerificationContext downstreamTrust = new VerificationContext() {
+        final CredentialContext downstreamCredentials = new KEMCredentialContext() {
             @Override
-            public PrivateKey getPrivateKemKey() {
+            public PrivateKey getPrivkey() {
                 return privateKey;
             }
         };
-        new SignatureValidationCredentials("credentials/CMP_EE_Root.pem", null);
-        final TrustChainAndPrivateKey upstreamCredentials =
-                new TrustChainAndPrivateKey("credentials/CMP_LRA_UPSTREAM_Keystore.p12", "Password".toCharArray());
-        final SignatureValidationCredentials upstreamTrust =
-                new SignatureValidationCredentials("credentials/CMP_CA_Root.pem", null);
-        final SignatureValidationCredentials enrollmentTrust =
-                new SignatureValidationCredentials("credentials/ENROLL_Root.pem", null);
-
-        return buildSimpleRaConfiguration(
-                downstreamCredentials,
-                ReprotectMode.keep,
-                downstreamTrust,
-                upstreamCredentials,
-                upstreamTrust,
-                enrollmentTrust);
-    }
-
-    public static Configuration buildKemBasedDownstreamConfiguration(PublicKey publicKey) throws Exception {
-        final KEMCredentialContext downstreamCredentials = () -> publicKey;
         final SignatureValidationCredentials downstreamTrust =
                 new SignatureValidationCredentials("credentials/CMP_EE_Root.pem", null);
         new SignatureValidationCredentials("credentials/CMP_EE_Root.pem", null);
@@ -124,9 +103,31 @@ public class ConfigurationFactory {
         final SignatureValidationCredentials enrollmentTrust =
                 new SignatureValidationCredentials("credentials/ENROLL_Root.pem", null);
 
-        return buildKemRaConfiguration(
+        return buildSimpleRaConfiguration(
                 downstreamCredentials,
                 ReprotectMode.reprotect,
+                downstreamTrust,
+                upstreamCredentials,
+                upstreamTrust,
+                enrollmentTrust);
+    }
+
+    public static Configuration buildKemBasedDownstreamConfiguration(PublicKey publicKey) throws Exception {
+        final TrustChainAndPrivateKey downstreamCredentials =
+                new TrustChainAndPrivateKey("credentials/CMP_LRA_DOWNSTREAM_Keystore.p12", "Password".toCharArray());
+        final VerificationContext downstreamTrust = new VerificationContext() {};
+        new SignatureValidationCredentials("credentials/CMP_EE_Root.pem", null);
+        new SignatureValidationCredentials("credentials/CMP_EE_Root.pem", null);
+        final TrustChainAndPrivateKey upstreamCredentials =
+                new TrustChainAndPrivateKey("credentials/CMP_LRA_UPSTREAM_Keystore.p12", "Password".toCharArray());
+        final SignatureValidationCredentials upstreamTrust =
+                new SignatureValidationCredentials("credentials/CMP_CA_Root.pem", null);
+        final SignatureValidationCredentials enrollmentTrust =
+                new SignatureValidationCredentials("credentials/ENROLL_Root.pem", null);
+
+        return buildKemRaConfiguration(
+                downstreamCredentials,
+                ReprotectMode.keep,
                 downstreamTrust,
                 upstreamCredentials,
                 upstreamTrust,

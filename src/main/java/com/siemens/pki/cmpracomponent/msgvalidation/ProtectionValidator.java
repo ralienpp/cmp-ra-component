@@ -19,10 +19,15 @@ package com.siemens.pki.cmpracomponent.msgvalidation;
 
 import com.siemens.pki.cmpracomponent.cmpextension.NewCMPObjectIdentifiers;
 import com.siemens.pki.cmpracomponent.configuration.VerificationContext;
+import com.siemens.pki.cmpracomponent.msggeneration.HeaderProvider;
+import com.siemens.pki.cmpracomponent.persistency.InitialKemContext;
 import com.siemens.pki.cmpracomponent.persistency.PersistencyContext;
+import com.siemens.pki.cmpracomponent.persistency.PersistencyContext.InterfaceContext;
 import com.siemens.pki.cmpracomponent.util.MessageDumper;
+import java.security.PublicKey;
 import org.bouncycastle.asn1.ASN1BitString;
 import org.bouncycastle.asn1.cmp.CMPObjectIdentifiers;
+import org.bouncycastle.asn1.cmp.InfoTypeAndValue;
 import org.bouncycastle.asn1.cmp.PKIBody;
 import org.bouncycastle.asn1.cmp.PKIFailureInfo;
 import org.bouncycastle.asn1.cmp.PKIMessage;
@@ -45,20 +50,53 @@ public class ProtectionValidator implements ValidatorIF<Void> {
 
     private final PersistencyContext persistencyContext;
 
+    private final InterfaceContext interfaceContext;
+
     /**
-     * @param interfaceName interface name used in error messages
-     * @param config        specific configuration
+     * @param interfaceName      interface name used in error messages
+     * @param config             specific configuration
      * @param persistencyContext persistency
+     * @param interfaceContext
      */
     public ProtectionValidator(
-            final String interfaceName, final VerificationContext config, PersistencyContext persistencyContext) {
+            final String interfaceName,
+            final VerificationContext config,
+            PersistencyContext persistencyContext,
+            InterfaceContext interfaceContext) {
         this.interfaceName = interfaceName;
         this.config = config;
         this.persistencyContext = persistencyContext;
+        this.interfaceContext = interfaceContext;
+    }
+
+    /**
+     *
+     * @return GeneralInfo (KemCiphertextInfo) to be used in CMP header.
+     * @throws Exception Exception in case of error
+     */
+    public InfoTypeAndValue getGeneralInfo(HeaderProvider headerProvider) throws Exception {
+        final PublicKey kemPubkey = config.getKemPubkey();
+        if (kemPubkey == null) {
+            return null;
+        }
+        InitialKemContext initialKemContext = persistencyContext.getInitialKemContext(interfaceContext);
+        if (initialKemContext != null) {
+            // it_kemCiphertextInfo already known and shared
+            return null;
+        }
+        initialKemContext = new InitialKemContext(
+                headerProvider.getTransactionID(),
+                headerProvider.getSenderNonce(),
+                headerProvider.getRecipNonce(),
+                kemPubkey);
+        persistencyContext.setInitialKemContext(initialKemContext, interfaceContext);
+        return new InfoTypeAndValue(
+                NewCMPObjectIdentifiers.it_kemCiphertextInfo, initialKemContext.getCiphertextInfo());
     }
 
     /**
      * Check a incoming message for correct protection
+     *
      * @param message message to check
      *
      * @throws CmpProcessingException in case of error or failed protection

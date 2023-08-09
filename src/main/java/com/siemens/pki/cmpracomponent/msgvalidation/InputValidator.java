@@ -89,8 +89,8 @@ public class InputValidator implements ValidatorIF<PersistencyContext> {
             new MessageBodyValidator(interfaceName, isRaVerifiedAcceptable, cmpInterface, certProfile)
                     .validate(in, interfaceContext);
             persistencyContext.setInitialKemContext(in, interfaceContext);
-            final ProtectionValidator protectionValidator =
-                    new ProtectionValidator(interfaceName, cmpInterface.getInputVerification(), persistencyContext);
+            final ProtectionValidator protectionValidator = new ProtectionValidator(
+                    interfaceName, cmpInterface.getInputVerification(), persistencyContext, interfaceContext);
             protectionValidator.validate(in, interfaceContext);
             return persistencyContext;
         } catch (final BaseCmpException ce) {

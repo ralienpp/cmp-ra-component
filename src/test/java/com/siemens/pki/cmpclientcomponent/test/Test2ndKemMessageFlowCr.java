@@ -39,8 +39,6 @@ import org.junit.runners.Parameterized.Parameters;
 @RunWith(Parameterized.class)
 public class Test2ndKemMessageFlowCr extends EnrollmentTestcaseBase {
 
-    private static final String UPSTREAM_TRUST_PATH = "credentials/CMP_CA_Root.pem";
-
     private static Object[][] inputList = {
         //
         {ISOIECObjectIdentifiers.id_kem_rsa.getId()}, {"RSA"},
@@ -74,7 +72,6 @@ public class Test2ndKemMessageFlowCr extends EnrollmentTestcaseBase {
                                 PKIBody.TYPE_CERT_REQ,
                                 ConfigurationFactory.getKeyGenerator().generateKeyPair(),
                                 null),
-                        UPSTREAM_TRUST_PATH,
                         kemKeyPair.getPublic())
                 .invokeEnrollment();
         assertNotNull(ret);

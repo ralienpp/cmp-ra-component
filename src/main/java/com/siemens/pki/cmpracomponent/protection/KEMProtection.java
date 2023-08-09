@@ -25,19 +25,17 @@ import com.siemens.pki.cmpracomponent.cryptoservices.AlgorithmHelper;
 import com.siemens.pki.cmpracomponent.cryptoservices.KdfFunction;
 import com.siemens.pki.cmpracomponent.cryptoservices.WrappedMac;
 import com.siemens.pki.cmpracomponent.cryptoservices.WrappedMacFactory;
-import com.siemens.pki.cmpracomponent.msggeneration.HeaderProvider;
 import com.siemens.pki.cmpracomponent.persistency.InitialKemContext;
 import com.siemens.pki.cmpracomponent.persistency.PersistencyContext;
 import com.siemens.pki.cmpracomponent.persistency.PersistencyContext.InterfaceContext;
 import java.security.NoSuchAlgorithmException;
-import java.security.PublicKey;
+import java.security.PrivateKey;
 import java.util.List;
 import javax.crypto.SecretKey;
 import org.bouncycastle.asn1.ASN1Encoding;
 import org.bouncycastle.asn1.DERBitString;
 import org.bouncycastle.asn1.DEROctetString;
 import org.bouncycastle.asn1.cmp.CMPCertificate;
-import org.bouncycastle.asn1.cmp.InfoTypeAndValue;
 import org.bouncycastle.asn1.cmp.ProtectedPart;
 import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
 import org.bouncycastle.asn1.x509.GeneralName;
@@ -49,7 +47,7 @@ public class KEMProtection implements ProtectionProvider {
     private final AlgorithmIdentifier mac;
     private final PersistencyContext persistencyContext;
     private final InterfaceContext interfaceContext;
-    private final PublicKey pubkey;
+    private final PrivateKey privkey;
 
     KEMProtection(
             final KEMCredentialContext config,
@@ -58,28 +56,10 @@ public class KEMProtection implements ProtectionProvider {
             throws NoSuchAlgorithmException {
         this.interfaceContext = interfaceContext;
         this.persistencyContext = persistencyContext;
-        this.pubkey = config.getPubkey();
+        this.privkey = config.getPrivkey();
         mac = new AlgorithmIdentifier(AlgorithmHelper.getOidForMac(config.getMacAlgorithm()));
         keyLen = config.getkeyLength();
         kdf = AlgorithmHelper.getKdfOID(config.getKdf());
-    }
-
-    @Override
-    public InfoTypeAndValue[] getGeneralInfo(HeaderProvider headerProvider) throws Exception {
-        InitialKemContext initialKemContext = persistencyContext.getInitialKemContext(interfaceContext);
-        if (initialKemContext != null) {
-            // it_kemCiphertextInfo already known and shared
-            return null;
-        }
-        initialKemContext = new InitialKemContext(
-                headerProvider.getTransactionID(),
-                headerProvider.getSenderNonce(),
-                headerProvider.getRecipNonce(),
-                pubkey);
-        persistencyContext.setInitialKemContext(initialKemContext, interfaceContext);
-        return new InfoTypeAndValue[] {
-            new InfoTypeAndValue(NewCMPObjectIdentifiers.it_kemCiphertextInfo, initialKemContext.getCiphertextInfo())
-        };
     }
 
     @Override
@@ -99,7 +79,7 @@ public class KEMProtection implements ProtectionProvider {
         final KemOtherInfo kemOtherInfo = initialKemContext.buildKemOtherInfo(keyLen, mac);
         final KdfFunction kdf = KdfFunction.getKdfInstance(this.kdf);
         final SecretKey key =
-                kdf.deriveKey(initialKemContext.getSharedSecret(null), keyLen, null, kemOtherInfo.getEncoded());
+                kdf.deriveKey(initialKemContext.getSharedSecret(privkey), keyLen, null, kemOtherInfo.getEncoded());
 
         final WrappedMac mac = WrappedMacFactory.createWrappedMac(this.mac, key.getEncoded());
         return new DERBitString(mac.calculateMac(protectedPart.getEncoded(ASN1Encoding.DER)));
@@ -113,7 +93,11 @@ public class KEMProtection implements ProtectionProvider {
 
     @Override
     public DEROctetString getSenderKID() {
-        // TODO Auto-generated method stub
         return null;
+    }
+
+    @Override
+    public boolean needsClientInitialKemSetup() {
+        return privkey != null;
     }
 }

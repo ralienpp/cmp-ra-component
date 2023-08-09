@@ -37,13 +37,11 @@ public class KEMProtectionValidator implements ValidatorIF<Void> {
 
     private final PersistencyContext persistencyContext;
     private final String interfaceName;
-    private final VerificationContext config;
 
     public KEMProtectionValidator(
             String interfaceName, VerificationContext config, PersistencyContext persistencyContext) {
         this.interfaceName = interfaceName;
         this.persistencyContext = persistencyContext;
-        this.config = config;
     }
 
     @Override
@@ -64,11 +62,8 @@ public class KEMProtectionValidator implements ValidatorIF<Void> {
             final KemOtherInfo kemOtherInfo = initialKemContext.buildKemOtherInfo(keyLen, kemBmpParameter.getMac());
 
             final KdfFunction kdf = KdfFunction.getKdfInstance(kemBmpParameter.getKdf());
-            final SecretKey key = kdf.deriveKey(
-                    initialKemContext.getSharedSecret(config.getPrivateKemKey()),
-                    keyLen,
-                    null,
-                    kemOtherInfo.getEncoded());
+            final SecretKey key =
+                    kdf.deriveKey(initialKemContext.getSharedSecret(), keyLen, null, kemOtherInfo.getEncoded());
 
             final WrappedMac mac = WrappedMacFactory.createWrappedMac(kemBmpParameter.getMac(), key.getEncoded());
             final byte[] protectedBytes = new ProtectedPart(header, message.getBody()).getEncoded(ASN1Encoding.DER);

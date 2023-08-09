@@ -18,7 +18,7 @@
 package com.siemens.pki.cmpracomponent.configuration;
 
 import java.net.URI;
-import java.security.PrivateKey;
+import java.security.PublicKey;
 import java.security.cert.CertPathBuilder;
 import java.security.cert.PKIXRevocationChecker;
 import java.security.cert.X509CRL;
@@ -60,6 +60,14 @@ public interface VerificationContext {
     }
 
     /**
+     * provide a public key used to build the shared secret key obtained by KEM encapsulation
+     * @return a public key
+     */
+    default PublicKey getKemPubkey() {
+        return null;
+    }
+
+    /**
      * optionally provide the location of the OCSP responder used for verification
      * as governed by {@link #getPKIXRevocationCheckerOptions()}.
      *
@@ -76,17 +84,6 @@ public interface VerificationContext {
      * @return revocation checking options or <code>null</code>
      */
     default EnumSet<PKIXRevocationChecker.Option> getPKIXRevocationCheckerOptions() {
-        return null;
-    }
-
-    /**
-     * provide a private key used to build the shared secret key obtained by KEM decapsulation
-     *
-     * @return a private key or
-     *         <code>null</code> if no Key Encapsulation protection should be
-     *         used.
-     */
-    default PrivateKey getPrivateKemKey() {
         return null;
     }
 

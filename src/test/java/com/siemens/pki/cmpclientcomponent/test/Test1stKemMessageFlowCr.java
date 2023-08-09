@@ -46,6 +46,8 @@ public class Test1stKemMessageFlowCr extends EnrollmentTestcaseBase {
         {BCObjectIdentifiers.kyber512.getId()}, {"KYBER"}
     };
 
+    private static final String UPSTREAM_TRUST_PATH = "credentials/CMP_CA_Root.pem";
+
     @Parameters(name = "{index}: KEM alg=>{0}")
     public static List<Object[]> data() {
         final List<Object[]> ret = new ArrayList<>(inputList.length);
@@ -73,6 +75,7 @@ public class Test1stKemMessageFlowCr extends EnrollmentTestcaseBase {
                                 PKIBody.TYPE_CERT_REQ,
                                 ConfigurationFactory.getKeyGenerator().generateKeyPair(),
                                 null),
+                        UPSTREAM_TRUST_PATH,
                         kemKeyPair.getPrivate())
                 .invokeEnrollment();
         assertNotNull(ret);

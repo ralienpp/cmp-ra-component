@@ -21,12 +21,14 @@ import static com.siemens.pki.cmpracomponent.util.NullUtil.computeDefaultIfNull;
 import static com.siemens.pki.cmpracomponent.util.NullUtil.defaultIfNull;
 import static com.siemens.pki.cmpracomponent.util.NullUtil.ifNotNull;
 
+import com.siemens.pki.cmpracomponent.cmpextension.NewCMPObjectIdentifiers;
 import com.siemens.pki.cmpracomponent.cryptoservices.AlgorithmHelper;
 import com.siemens.pki.cmpracomponent.cryptoservices.CertUtility;
 import com.siemens.pki.cmpracomponent.cryptoservices.CmsEncryptorBase;
 import com.siemens.pki.cmpracomponent.cryptoservices.DataSigner;
 import com.siemens.pki.cmpracomponent.protection.ProtectionProvider;
 import com.siemens.pki.cmpracomponent.util.MessageDumper;
+import com.siemens.pki.cmpracomponent.util.NullUtil;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.security.PrivateKey;
@@ -34,14 +36,12 @@ import java.security.Signature;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
 import java.util.stream.Stream;
 import org.bouncycastle.asn1.ASN1Encoding;
 import org.bouncycastle.asn1.ASN1Enumerated;
 import org.bouncycastle.asn1.ASN1GeneralizedTime;
 import org.bouncycastle.asn1.ASN1Integer;
-import org.bouncycastle.asn1.ASN1ObjectIdentifier;
 import org.bouncycastle.asn1.ASN1OctetString;
 import org.bouncycastle.asn1.ASN1Sequence;
 import org.bouncycastle.asn1.DERBitString;
@@ -135,7 +135,9 @@ public class PkiMessageGenerator {
 
             @Override
             public InfoTypeAndValue[] getGeneralInfo() {
-                return header.getGeneralInfo();
+                return NullUtil.ifNotNull(header.getGeneralInfo(), orgGeneralInfo -> Arrays.stream(orgGeneralInfo)
+                        .filter(x -> !x.getInfoType().equals(NewCMPObjectIdentifiers.it_kemCiphertextInfo))
+                        .toArray(InfoTypeAndValue[]::new));
             }
 
             @Override
@@ -202,7 +204,9 @@ public class PkiMessageGenerator {
 
             @Override
             public InfoTypeAndValue[] getGeneralInfo() {
-                return header.getGeneralInfo();
+                return NullUtil.ifNotNull(header.getGeneralInfo(), orgGeneralInfo -> Arrays.stream(orgGeneralInfo)
+                        .filter(x -> !x.getInfoType().equals(NewCMPObjectIdentifiers.it_kemCiphertextInfo))
+                        .toArray(InfoTypeAndValue[]::new));
             }
 
             @Override
@@ -293,19 +297,7 @@ public class PkiMessageGenerator {
             headerBuilder.setTransactionID(headerProvider.getTransactionID());
             headerBuilder.setSenderNonce(headerProvider.getSenderNonce());
             headerBuilder.setRecipNonce(headerProvider.getRecipNonce());
-            final InfoTypeAndValue[] protectionGeneralInfo = protectionProvider.getGeneralInfo(headerProvider);
-            final InfoTypeAndValue[] headerProviderGeneralInfo = headerProvider.getGeneralInfo();
-            if (protectionGeneralInfo == null || protectionGeneralInfo.length <= 0) {
-                headerBuilder.setGeneralInfo(headerProviderGeneralInfo);
-            } else if (headerProviderGeneralInfo == null || headerProviderGeneralInfo.length <= 0) {
-                headerBuilder.setGeneralInfo(protectionGeneralInfo);
-            } else {
-                // merge together, last KEM protection wins
-                final HashMap<ASN1ObjectIdentifier, InfoTypeAndValue> generalInfo = new HashMap<>();
-                Arrays.stream(headerProviderGeneralInfo).forEach(x -> generalInfo.put(x.getInfoType(), x));
-                Arrays.stream(protectionGeneralInfo).forEach(x -> generalInfo.put(x.getInfoType(), x));
-                headerBuilder.setGeneralInfo(generalInfo.values().toArray(new InfoTypeAndValue[generalInfo.size()]));
-            }
+            headerBuilder.setGeneralInfo(headerProvider.getGeneralInfo());
             final PKIHeader generatedHeader = headerBuilder.build();
             final CMPCertificate[] generatedExtraCerts = Stream.concat(
                             defaultIfNull(protectionProvider.getProtectingExtraCerts(), Collections.emptyList())

@@ -17,7 +17,7 @@
  */
 package com.siemens.pki.cmpracomponent.configuration;
 
-import java.security.PublicKey;
+import java.security.PrivateKey;
 import org.bouncycastle.asn1.pkcs.PKCSObjectIdentifiers;
 
 /**
@@ -55,8 +55,10 @@ public interface KEMCredentialContext extends CredentialContext {
     }
 
     /**
-     * provide a public key used to build the shared secret key obtained by KEM encapsulation
-     * @return a public key
+     * provide a private key used to build the shared secret key obtained by KEM decapsulation
+     * @return a private key
      */
-    PublicKey getPubkey();
+    default PrivateKey getPrivkey() {
+        return null;
+    }
 }

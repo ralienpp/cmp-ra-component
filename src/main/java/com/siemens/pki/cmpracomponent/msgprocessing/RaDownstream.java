@@ -369,7 +369,10 @@ class RaDownstream {
                                 new MessageHeaderValidator(NESTED_STRING + INTERFACE_NAME);
                         headerValidator.validate(in, InterfaceContext.dowstream_rec);
                         final ProtectionValidator protectionValidator = new ProtectionValidator(
-                                NESTED_STRING + INTERFACE_NAME, nestedEndpointContext.getInputVerification(), null);
+                                NESTED_STRING + INTERFACE_NAME,
+                                nestedEndpointContext.getInputVerification(),
+                                null,
+                                null);
                         protectionValidator.validate(in, InterfaceContext.dowstream_rec);
                         final PKIMessage[] embeddedMessages = PKIMessages.getInstance(
                                         in.getBody().getContent())
@@ -398,7 +401,7 @@ class RaDownstream {
                         config::isRaVerifiedAcceptable,
                         supportedMessageTypes,
                         persistencyContextManager::loadCreatePersistencyContext);
-                persistencyContext = inputValidator.validate(in, InterfaceContext.dowstream_rec);
+                persistencyContext = inputValidator.validate(in, InterfaceContext.downstream_send);
                 final PKIMessage responseFromUpstream = handleValidatedRequest(in, persistencyContext);
                 // apply downstream protection
                 final List<CMPCertificate> issuingChain;

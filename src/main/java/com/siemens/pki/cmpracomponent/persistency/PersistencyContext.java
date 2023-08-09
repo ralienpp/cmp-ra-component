@@ -58,11 +58,14 @@ public class PersistencyContext {
         if (header.getGeneralInfo() != null) {
             for (final InfoTypeAndValue itav : header.getGeneralInfo()) {
                 if (NewCMPObjectIdentifiers.it_kemCiphertextInfo.equals(itav.getInfoType())) {
-                    return new InitialKemContext(
-                            header.getTransactionID(),
-                            header.getSenderNonce(),
-                            header.getRecipNonce(),
-                            KemCiphertextInfo.getInstance(itav.getInfoValue()));
+                    final KemCiphertextInfo kemCiphertextInfo = KemCiphertextInfo.getInstance(itav.getInfoValue());
+                    if (kemCiphertextInfo != null) {
+                        return new InitialKemContext(
+                                header.getTransactionID(),
+                                header.getSenderNonce(),
+                                header.getRecipNonce(),
+                                kemCiphertextInfo);
+                    }
                 }
             }
         }
@@ -77,11 +80,14 @@ public class PersistencyContext {
 
         for (final InfoTypeAndValue itav : itavs) {
             if (NewCMPObjectIdentifiers.it_kemCiphertextInfo.equals(itav.getInfoType())) {
-                return new InitialKemContext(
-                        header.getTransactionID(),
-                        header.getSenderNonce(),
-                        header.getRecipNonce(),
-                        KemCiphertextInfo.getInstance(itav.getInfoValue()));
+                final KemCiphertextInfo kemCiphertextInfo = KemCiphertextInfo.getInstance(itav.getInfoValue());
+                if (kemCiphertextInfo != null) {
+                    return new InitialKemContext(
+                            header.getTransactionID(),
+                            header.getSenderNonce(),
+                            header.getRecipNonce(),
+                            kemCiphertextInfo);
+                }
             }
         }
         return null;

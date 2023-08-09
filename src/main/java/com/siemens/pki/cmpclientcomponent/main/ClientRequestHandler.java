@@ -116,13 +116,21 @@ class ClientRequestHandler {
             outputProtection = ProtectionProviderFactory.createProtectionProvider(
                     outputCredentials, persistencyContext, PersistencyContext.InterfaceContext.upstream_send);
             this.inputVerification = inputVerification;
-            protectionValidator = new ProtectionValidator(intefaceName, inputVerification, persistencyContext);
+            protectionValidator = new ProtectionValidator(
+                    intefaceName,
+                    inputVerification,
+                    persistencyContext,
+                    PersistencyContext.InterfaceContext.upstream_rec);
             if (upstreamConfiguration != null) {
                 bodyValidator =
                         new MessageBodyValidator(intefaceName, (x, y) -> false, upstreamConfiguration, certProfile);
             } else {
                 bodyValidator = DUMMY_VALIDATOR;
             }
+        }
+
+        public InfoTypeAndValue getGeneralInfo(HeaderProvider headerProvider) throws Exception {
+            return protectionValidator.getGeneralInfo(headerProvider);
         }
 
         public VerificationContext getInputVerification() {
@@ -133,8 +141,8 @@ class ClientRequestHandler {
             return outputProtection;
         }
 
-        boolean needsInitialKemSetup() {
-            return inputVerification.getPrivateKemKey() != null;
+        boolean needsClientInitialKemSetup() {
+            return outputProtection.needsClientInitialKemSetup();
         }
 
         public void setInitialKemContext(PKIMessage response, InterfaceContext upstreamRec) throws BaseCmpException {
@@ -218,7 +226,7 @@ class ClientRequestHandler {
     PKIMessage buildInitialRequest(final PKIBody requestBody, final boolean withImplicitConfirm, final int pvno)
             throws Exception {
         ASN1OctetString recipNonce = null;
-        if (validatorAndProtector.needsInitialKemSetup()) {
+        if (validatorAndProtector.needsClientInitialKemSetup()) {
             final PKIMessage ret = establishInitialKemContext(requestBody.getType());
             if (ret == null) {
                 LOGGER.warn("KEM exchange failed");
@@ -236,21 +244,30 @@ class ClientRequestHandler {
             final int pvno,
             final boolean withImplicitConfirm)
             throws Exception {
+
         final HeaderProvider headerProvider = new HeaderProvider() {
             final ASN1OctetString senderNonce = new DEROctetString(CertUtility.generateRandomBytes(16));
 
             @Override
             public InfoTypeAndValue[] getGeneralInfo() {
-                if (certProfile == null && !withImplicitConfirm) {
-                    return null;
+                final ArrayList<InfoTypeAndValue> genList = new ArrayList<>(3);
+                try {
+                    final InfoTypeAndValue kemGeneralInfo = validatorAndProtector.getGeneralInfo(this);
+                    if (kemGeneralInfo != null) {
+                        genList.add(kemGeneralInfo);
+                    }
+                } catch (final Exception e) {
+                    LOGGER.error("failed to build KEM GeneralInfo");
                 }
-                final ArrayList<InfoTypeAndValue> genList = new ArrayList<>(2);
                 if (certProfile != null) {
                     genList.add(new InfoTypeAndValue(
                             CMPObjectIdentifiers.id_it_certProfile, new DERSequence(new DERUTF8String(certProfile))));
                 }
                 if (withImplicitConfirm) {
                     genList.add(new InfoTypeAndValue(CMPObjectIdentifiers.it_implicitConfirm, DERNull.INSTANCE));
+                }
+                if (genList.size() < 1) {
+                    return null;
                 }
                 return genList.toArray(new InfoTypeAndValue[0]);
             }
@@ -361,7 +378,7 @@ class ClientRequestHandler {
                     if (NewCMPObjectIdentifiers.it_kemCiphertextInfo.equals(aktitav.getInfoType())) {
                         final ASN1Encodable infoValue = aktitav.getInfoValue();
                         if (infoValue != null) {
-                            validatorAndProtector.setInitialKemContext(response, InterfaceContext.upstream_rec);
+                            validatorAndProtector.setInitialKemContext(response, InterfaceContext.upstream_send);
                             // kemCiphertextInfo found
                             return response;
                         }

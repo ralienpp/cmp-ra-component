@@ -20,6 +20,7 @@ package com.siemens.pki.cmpracomponent.persistency;
 import com.siemens.pki.cmpracomponent.cmpextension.KemCiphertextInfo;
 import com.siemens.pki.cmpracomponent.cmpextension.KemOtherInfo;
 import com.siemens.pki.cmpracomponent.cryptoservices.KemHandler;
+import com.siemens.pki.cmpracomponent.msgvalidation.CmpValidationException;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
@@ -27,6 +28,7 @@ import java.security.PrivateKey;
 import java.security.PublicKey;
 import org.bouncycastle.asn1.ASN1OctetString;
 import org.bouncycastle.asn1.BEROctetString;
+import org.bouncycastle.asn1.cmp.PKIFailureInfo;
 import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
 import org.bouncycastle.crypto.SecretWithEncapsulation;
 
@@ -57,7 +59,14 @@ public class InitialKemContext {
 
     public InitialKemContext(
             ASN1OctetString transactionID, ASN1OctetString senderNonce, ASN1OctetString recipNonce, PublicKey pubkey)
-            throws NoSuchAlgorithmException, InvalidAlgorithmParameterException, NoSuchProviderException {
+            throws NoSuchAlgorithmException, InvalidAlgorithmParameterException, NoSuchProviderException,
+                    CmpValidationException {
+        if (pubkey == null) {
+            throw new CmpValidationException(
+                    "KEM context",
+                    PKIFailureInfo.badMessageCheck,
+                    "could not build ciphertextInfo, public KEM key not provided");
+        }
         this.transactionID = transactionID;
         this.senderNonce = senderNonce;
         this.recipNonce = recipNonce;
@@ -88,11 +97,18 @@ public class InitialKemContext {
         return sharedSecret;
     }
 
-    public byte[] getSharedSecret(PrivateKey key) throws InvalidAlgorithmParameterException, NoSuchAlgorithmException {
-        if (sharedSecret == null) {
+    public byte[] getSharedSecret(PrivateKey key)
+            throws InvalidAlgorithmParameterException, NoSuchAlgorithmException, CmpValidationException {
+        if (sharedSecret == null && key != null) {
             sharedSecret = KemHandler.createKemHandler(
                             ciphertextInfo.getKem().getAlgorithm().toString())
                     .decapsulate(ciphertextInfo.getCt().getOctets(), key);
+        }
+        if (sharedSecret == null) {
+            throw new CmpValidationException(
+                    "KEM context",
+                    PKIFailureInfo.badMessageCheck,
+                    "could not derive KEM shared secret, private KEM key not provided");
         }
         return sharedSecret;
     }
