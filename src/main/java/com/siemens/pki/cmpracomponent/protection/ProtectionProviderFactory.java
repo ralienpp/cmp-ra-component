@@ -35,7 +35,7 @@ public class ProtectionProviderFactory {
     /**
      * create a {@link ProtectionProvider} according to the given configuration
      *
-     * @param config specific configuration
+     * @param config             specific configuration
      * @param persistencyContext
      * @return a new {@link ProtectionProvider}
      * @throws NoSuchAlgorithmException in case of unknown algorithm
@@ -64,7 +64,7 @@ public class ProtectionProviderFactory {
         if (config instanceof SignatureCredentialContext) {
             return new SignatureBasedProtection((SignatureCredentialContext) config);
         }
-        if (config instanceof KEMCredentialContext) {
+        if (config instanceof KEMCredentialContext && persistencyContext != null) {
             return new KEMProtection((KEMCredentialContext) config, persistencyContext, interfaceContext);
         }
         return ProtectionProvider.NO_PROTECTION;
